@@ -1,0 +1,151 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, amsthm, graphicx, enumerate}
+\usepackage[margin=1in]{geometry}
+
+\title{Parallel Sampled Convex Problems}
+\author{David Eckman (dje88) and Calvin Wylie (cjw278)}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+Uncertain convex programming aims to optimize a convex function subject to
+constrains that are not precisely known.  Without loss of generality, these
+problems can be written as
+\begin{equation} \label{ucp}
+\begin{aligned}
+& \underset{x \in X}{\text{minimize}}
+& & c^T x \\
+& \text{subject to}
+& & f(x, \delta) \leq 0,
+\end{aligned} \tag{UCP}
+\end{equation}
+where $\delta \in \Delta$ is a (possibly random) \emph{uncertain} parameter.
+
+The \emph{robust} formulation of \ref{ucp} seeks to satisfy the constraints 
+for all possible values of $\delta$.  That is,
+\begin{equation} \label{rcp}
+\begin{aligned}
+& \underset{x \in X}{\text{minimize}}
+& & c^T x \\
+& \text{subject to}
+& & f(x, \delta) \leq 0 \quad \forall \; \delta \in \Delta.
+\end{aligned} \tag{RCP}
+\end{equation}
+For general uncertaincy sets $\Delta$, \ref{rcp} can become intractable, or
+produce solutions that are in a sense too ``conservative''.
+
+If we assume that $\delta$ is distributed on $\Delta$ according to some 
+probability measure $\mathbb{P}$, instead of seeking a solution that satisfies
+the constraints for all possible values of $\delta$, we may seek a solution
+that is feasible with high probability.  Specifially, the \emph{chance-constrained}
+program for acceptable risk of constraint violation $\epsilon$ is
+\begin{equation} \label{ccp}
+\begin{aligned}
+& \underset{x \in X}{\text{minimize}}
+& & c^T x \\
+& \text{subject to}
+& & \mathbb{P} \left[ f(x, \delta) > 0 \right] \leq \epsilon.
+\end{aligned} \tag{CCP$_\epsilon$}
+\end{equation}
+
+Chance-constrained programs are, in general, non-convex, so we must settle for
+convex approximations.
+
+\section{Sampled Convex Programs}
+Assuming that we are able to independently sample $\delta$ from $\Delta$ according
+to $\mathbb{P}$, one method to obtain a solution that is feasible for \ref{ccp} with 
+high probability is through \emph{sampled} or \emph{random} convex programs.
+
+Let $\delta_1, \ldots, \delta_N$ be iid samples of our unknown parameter $\delta$.
+The associated sampled convex program is
+\begin{equation} \label{scp}
+\begin{aligned}
+& \underset{x \in X}{\text{minimize}}
+& & c^T x \\
+& \text{subject to}
+& & f(x, \delta_i) \leq 0, \; i = 1, \ldots, N.
+\end{aligned} \tag{SCP}
+\end{equation}
+
+The sampled convex program is attractive because it does not require any distributional
+information, and preserves the complexity class of the original uncertain convex program \ref{ucp}.
+Moreoever, given some $N$, we can exactly quantify with what probability a solution 
+to the sampled program will be feasible for the chance-constrained program 
+(see \cite{campi04} and \cite{campi08}). However, to achieve a high probability, $N$
+may need to be quite large, limiting the computational tractability for some classes
+of problems.
+
+This motivates our primary research question: can we solve in parellel 
+mutliple sampled convex programs, each with a smaller number of contraints, 
+and somehow recover a solution that is still feasible for the chance constrained
+program with high probability?
+
+\section{Parallel Sampled Convex Programming}
+Motivated by the fact that a convex program in $n$ dimensional space will have at most $n$
+support contraints at the optimal solution, the problem of finding an optimal solution to \ref{scp} can be viewed as the problem of identifying the $n$ supporting constraints.
+Can we build a consensus on what the supporting constraints are by looking at solutions of 
+smaller sampled convex programs? 
+
+For an example, suppose we determine that $N$ samples are needed to reach our desirable \ref{ccp} feasibility probability, and suppose that we have available one ``master'' processor
+and $p$ ``slave'' processors available.
+For simplicity, suppose that $N = mp$ for some positve integers $m > n$.
+Consider the following procedure:
+
+\begin{enumerate}
+\item For each processor $1 \leq j \leq p$, solve the sampled convex program
+\begin{equation*}
+\begin{aligned}
+    & \underset{x \in \mathcal{X}}{\text{minimize}}
+    & & c^T x \\
+    & \text{subject to}
+    & & f(x,\delta_i) \leq 0 \quad i = m(j-1) + 1, \ldots, mj.
+\end{aligned}
+\end{equation*}
+Let $x_j^*$ be the corresponding solution.
+\item For each slave processor $1 \leq j \leq p$, determine the supporting constraints of the 
+optimal solution $x_j^*$.
+Assuming that each sampled convex program is fully-supported with probability one,
+label the sample corresponding to these constraints $\delta_1^j, \ldots, \delta_n^j$.
+Send these samples to the master processor.
+\item On the master processor, solve the sampled convex program
+\begin{equation*}
+\begin{aligned}
+    & \underset{x \in \mathcal{X}}{\text{minimize}}
+    & & c^T x \\
+    & \text{subject to}
+    & & f(x,\delta_i^j) \leq 0 \quad i = 1,\ldots,k \text{ and } j = 1,\ldots,p.
+\end{aligned}
+\end{equation*}
+Let $x^{**}$ be the corresponding solution.
+\end{enumerate}
+
+A recent paper by Carlone et al. \cite{carlone2014} analyzes a similar algorithm, 
+where instead of a master processor, each slave processor passes their 
+corresponding supporting contraints around in a ring topology.  They prove that 
+(almost surely) a finite number of iterations is necessary to achieve \ref{ccp} 
+feasibility with high probability, but do not quantify the number required.
+
+\section{Experiments}
+We intend to conduct experiments on the performance of the parallel procedure versus the traditional serial \ref{rcp} procedure on some suitably chosen \ref{ccp} optimization problems.
+For measures of performance of the solutions $x^*$ and $x^{**}$, we will look at the objective function values, the expected violation probabilities, and the probabilities that the violations probabilities are greater than $\epsilon$.
+For estimating the last two of these performance measures, we will use Monte Carlo simulation and test over problems for which one can explicitly characterize the feasible region of \ref{ccp}.
+
+We will also experiment with variations of the basic procedure.
+One variation would involve communicating the support constraints of the master's problem back to the workers and doing new sampling before solving new subproblems for each workers.
+This could be done over a number of iterations and we could study the performance of the returned solutions at each iteration.
+
+Another variation would again involve communicating support constraints of the master's problem back to the workers, but instead of doing new sampling, we re-solve the subproblems with the additional shared support constraints.
+After sending the support constraints of these new subproblems to the master, we could perform one final solve and get a solution that is no worse than the previous.
+This is because passing support constraints from the master to the workers would allow for constraints that were not previously support constraints to become support constraints.
+
+We will set up strong and weak scaling experiments to compare the quality of solutions and 
+wall-clock time to solution against the number of processors used.  We will also attempt to
+model the performance and communication costs of the algorithm implementations.
+
+\bibliographystyle{abbrv}
+\bibliography{proposal} 
+
+\end{document}
