@@ -1,3 +1,3 @@
 # pscp
 
-Paralell Sampled Convex Programming
+Parallel Sampled Convex Programming
