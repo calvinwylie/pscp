@@ -90,7 +90,11 @@ int main(int argc, char** argv)
     glp_load_matrix(lp, size-1, ia, ja, ar);
   
     /* solve problem */
-    glp_simplex(lp, NULL);
+    glp_smcp param;
+    glp_init_smcp(&param);
+    param.meth = GLP_DUAL;
+    glp_std_basis(lp);
+    glp_simplex(lp, &param);
   
     /* recover and display results */
     printf("z = %g\n", glp_get_obj_val(lp));
