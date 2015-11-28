@@ -1,28 +1,28 @@
+#include <getopt.h>
 #include <stdio.h>            /* C input/output                       */
 #include <stdlib.h>           /* C standard library                   */
 #include <time.h>
+#include <math.h>
 #include <glpk.h>             /* GNU GLPK linear/mixed integer solver */
 #include "mt19937p.h"
+#include <mpi.h>
 
-int main(int argc, char** argv)
+void solve_lp(int N, int n, double* R, int* ridx, int* active_constr)
 {
-    const int n = 200;
-    const int N = 5312;
-    const int size = (N+1)*(n+1) + 1; // We add one because GLPK indexes arrays
-                                      // starting at 1 instead of 0.
-  
-    /* declare variables */
+    double tol = 1.0e-14;
+    int size = (N+1)*(n+1) + 1; // We add one because GLPK indexes arrays
+                                // starting at 1 instead of 0.
+
     glp_prob *lp;
-    int* ia = malloc(size * sizeof(int));
-    int* ja = malloc(size * sizeof(int));
-    double* ar = malloc(size * sizeof(double));
+    int ia[size]; // int* ia = malloc(size * sizeof(int));
+    int ja[size]; // int* ja = malloc(size * sizeof(int));
+    double ar[size]; // double* ar = malloc(size * sizeof(double));
   
-    /* create problem */
+
     lp = glp_create_prob();
     glp_set_prob_name(lp, "portfolio");
     glp_set_obj_dir(lp, GLP_MAX);
-  
-    /* fill problem */
+
     glp_add_rows(lp, N+1);
 
     for (int i = 1; i <= N; i++) {
@@ -44,19 +44,18 @@ int main(int argc, char** argv)
     glp_set_col_name(lp, n+1, "t");
     glp_set_col_bnds(lp, n+1, GLP_FR, 0.0, 0.0);
     glp_set_obj_coef(lp, n+1, 1.0);
+    
+    // for (int i = 0; i < N*(n-1); i++) {
+    //     printf("%d: %g\n", i, R[i]);
+    // }
 
-    struct mt19937p state;
-    sgenrand(time(NULL), &state);
-  
     int idx = 1;
     // Random constraints
     for (int i = 1; i <= N; i++) {
         for (int j = 1; j < n; j++) {
             ia[idx] = i;
             ja[idx] = j;
-            double r = 0.1*genrand(&state) + 0.01; // [0.0, 0.1]
-            // printf("r=%f\n", r);
-            ar[idx] = 1.0+r;
+            ar[idx] = R[ ridx[(i-1)] * (n-1) + (j-1) ];
             idx += 1;
         }
 
@@ -73,7 +72,6 @@ int main(int argc, char** argv)
         idx += 1;
     }
 
-
     // Sum = 1 constraint
     for (int i = 1; i <= n; i++) {
         ia[idx] = N+1;
@@ -87,33 +85,135 @@ int main(int argc, char** argv)
     ar[idx] = 0.0;
     idx += 1;
 
+    // for (int i = 1; i < size; i++) {
+    //     printf("%d %d %g\n", ia[i], ja[i], ar[i]);
+    // }
+
     glp_load_matrix(lp, size-1, ia, ja, ar);
-  
-    /* solve problem */
+
+    glp_scale_prob(lp, GLP_SF_AUTO);
+
     glp_smcp param;
     glp_init_smcp(&param);
     param.meth = GLP_DUAL;
     glp_std_basis(lp);
-    glp_simplex(lp, &param);
+    glp_simplex(lp, NULL);
   
-    /* recover and display results */
     printf("z = %g\n", glp_get_obj_val(lp));
-    for (int i = 1; i <= n; i++) {
-        printf("y%d = %g\n", i, glp_get_col_prim(lp, i));
-    }
+    // for (int i = 1; i <= n; i++) {
+    //     printf("y%d = %g\n", i, glp_get_col_prim(lp, i));
+    // }
     // printf("t = %g\n", glp_get_col_prim(lp, n+1));
   
     /* recover dual variables at optimality
        when dual < 0, the constraint is active */
-    // for (int i = 1; i <= N; i++) {
-    //     printf("constr%d = %g\n", i, glp_get_row_dual(lp, i));
-    // }
-  
-    /* housekeeping */
+    for (int i = 1; i <= N; i++) {
+        double slack = glp_get_row_prim(lp, i);
+        active_constr[i-1] = fabs(slack) < tol ? 1 : 0;
+        printf("Constraint %d = %d\n", i, active_constr[i-1]);
+    }
+
+
     glp_delete_prob(lp);
-    glp_free_env();
-    free(ia);
-    free(ja);
-    free(ar);
+    // glp_free_env();
+    // free(ia);
+    // free(ja);
+    // free(ar);
+}
+
+double* generate_random_constraints(int seed, int N, int n) 
+{
+    struct mt19937p state;
+    sgenrand(seed, &state);
+
+    // Row major layout
+    double* R = malloc(N*n*sizeof(double));
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < n; j++) {
+            R[i*n + j] = 1.0 + 0.1*genrand(&state) + 0.01; // [1.01, 1.11]
+        }
+    }
+
+    return R;
+}
+
+int main(int argc, char** argv)
+{
+    int rank, num_p;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_p);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int n = 200;
+    int N = 500;
+    // Option processing
+    extern char* optarg;
+    const char* optstring = "n:N:";
+    int c;
+    while ((c = getopt(argc, argv, optstring)) != -1) {
+        switch (c) {
+        case 'n': n = atoi(optarg); break;
+        case 'N': N = atoi(optarg); break;
+        }
+    }
+    
+    double* R;
+    int* active_constr;
+    if (rank == 0) {
+        R = generate_random_constraints(time(NULL), N*num_p, n-1);
+        active_constr = (int*) calloc(N*num_p, sizeof(int));
+    }
+
+    double* R_local = malloc(N*(n-1)*sizeof(double));
+    int* active_constr_local = (int*) calloc(N, sizeof(int));
+
+    MPI_Scatter(R, N*(n-1), MPI_DOUBLE, R_local, N*(n-1), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    
+    // for (int i = 0; i < N*(n-1); i++) {
+    //     R_local[i] = R[i];
+    //     printf("%d: %g - %g = %g\n", i, R[i], R_local[i], R[i] - R_local[i]);
+    // }
+
+    int ridx[N];
+    for (int i = 0; i < N; i++) {
+        ridx[i] = i;
+    }
+    solve_lp(N, n, R_local, ridx, active_constr_local);
+
+    // for (int i = 0; i < N*(n-1); i++) {
+    //     printf("%d: %g\n", i, R_local[i]);
+    // }
+
+    MPI_Gather(active_constr_local, N, MPI_INT, active_constr, N, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Re-solve with just the active constraints...
+    if (rank == 0) {
+
+        int num_active_constr = 0;
+        for (int i = 0; i < N*num_p; i++) {
+            num_active_constr += active_constr[i];
+        }
+        printf("Num active constraints: %d\n", num_active_constr);
+
+        int ridx[num_active_constr];
+        int count = 0;
+        for (int i = 0; i < N*num_p; i++) {
+            if (active_constr[i] == 1) {
+                printf("%d %d\n", count, i);
+                ridx[count] = i;
+                count += 1;
+            }
+        }
+        solve_lp(num_active_constr, n, R, ridx, active_constr);
+    }
+
+    if (rank == 0) {
+        free(R);
+        free(active_constr);
+    }
+
+    free(R_local);
+    free(active_constr_local);
+    MPI_Finalize();
     return 0;
 }

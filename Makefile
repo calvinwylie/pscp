@@ -1,4 +1,4 @@
-CC=gcc-5
+CC=mpicc
 CFLAGS=-lglpk
 
 SRC=src
