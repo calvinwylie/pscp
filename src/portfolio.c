@@ -7,18 +7,17 @@
 #include "mt19937p.h"
 #include <mpi.h>
 
-void solve_lp(int N, int n, double* R, int* ridx, int* active_constr)
+void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_constr)
 {
     double tol = 1.0e-14;
     int size = (N+1)*(n+1) + 1; // We add one because GLPK indexes arrays
                                 // starting at 1 instead of 0.
 
     glp_prob *lp;
-    int ia[size]; // int* ia = malloc(size * sizeof(int));
-    int ja[size]; // int* ja = malloc(size * sizeof(int));
-    double ar[size]; // double* ar = malloc(size * sizeof(double));
+    int* ia = malloc(size * sizeof(int));
+    int* ja = malloc(size * sizeof(int));
+    double* ar = malloc(size * sizeof(double));
   
-
     lp = glp_create_prob();
     glp_set_prob_name(lp, "portfolio");
     glp_set_obj_dir(lp, GLP_MAX);
@@ -91,7 +90,7 @@ void solve_lp(int N, int n, double* R, int* ridx, int* active_constr)
 
     glp_load_matrix(lp, size-1, ia, ja, ar);
 
-    glp_scale_prob(lp, GLP_SF_AUTO);
+    // glp_scale_prob(lp, GLP_SF_AUTO);
 
     glp_smcp param;
     glp_init_smcp(&param);
@@ -99,26 +98,32 @@ void solve_lp(int N, int n, double* R, int* ridx, int* active_constr)
     glp_std_basis(lp);
     glp_simplex(lp, NULL);
   
-    printf("z = %g\n", glp_get_obj_val(lp));
-    // for (int i = 1; i <= n; i++) {
-    //     printf("y%d = %g\n", i, glp_get_col_prim(lp, i));
-    // }
-    // printf("t = %g\n", glp_get_col_prim(lp, n+1));
+    double z = glp_get_obj_val(lp);
+    printf("z = %g\n", z);
+    if (soln) {
+        for (int i = 0; i < n; i++) {
+            double y = glp_get_col_prim(lp, i+1);
+            soln[i] = y;
+            // printf("y%d = %g\n", i, y);
+        }
+        double t = glp_get_col_prim(lp, n+1);
+        soln[n] = t;
+        // printf("t = %g\n", glp_get_col_prim(lp, n+1));
+    }
   
-    /* recover dual variables at optimality
-       when dual < 0, the constraint is active */
+
     for (int i = 1; i <= N; i++) {
         double slack = glp_get_row_prim(lp, i);
         active_constr[i-1] = fabs(slack) < tol ? 1 : 0;
-        printf("Constraint %d = %d\n", i, active_constr[i-1]);
+        // printf("constr%d %d\n", i, active_constr[i-1]);
     }
 
 
     glp_delete_prob(lp);
     // glp_free_env();
-    // free(ia);
-    // free(ja);
-    // free(ar);
+    free(ia);
+    free(ja);
+    free(ar);
 }
 
 double* generate_random_constraints(int seed, int N, int n) 
@@ -135,6 +140,19 @@ double* generate_random_constraints(int seed, int N, int n)
     }
 
     return R;
+}
+
+void write_soln(const char* fname, int n, double* soln)
+{
+    FILE* fp = fopen(fname, "w+");
+    if (fp == NULL) {
+        fprintf(stderr, "Could not open output file: %s\n", fname);
+        exit(-1);
+    }
+    for (int i = 0; i < n; ++i) {
+        fprintf(fp, "%g\n", soln[i]);
+    }
+    fclose(fp);
 }
 
 int main(int argc, char** argv)
@@ -156,6 +174,8 @@ int main(int argc, char** argv)
         case 'N': N = atoi(optarg); break;
         }
     }
+
+    glp_term_out(GLP_OFF);
     
     double* R;
     int* active_constr;
@@ -178,7 +198,7 @@ int main(int argc, char** argv)
     for (int i = 0; i < N; i++) {
         ridx[i] = i;
     }
-    solve_lp(N, n, R_local, ridx, active_constr_local);
+    solve_lp(N, n, R_local, ridx, NULL, active_constr_local);
 
     // for (int i = 0; i < N*(n-1); i++) {
     //     printf("%d: %g\n", i, R_local[i]);
@@ -193,18 +213,18 @@ int main(int argc, char** argv)
         for (int i = 0; i < N*num_p; i++) {
             num_active_constr += active_constr[i];
         }
-        printf("Num active constraints: %d\n", num_active_constr);
 
         int ridx[num_active_constr];
         int count = 0;
         for (int i = 0; i < N*num_p; i++) {
             if (active_constr[i] == 1) {
-                printf("%d %d\n", count, i);
                 ridx[count] = i;
                 count += 1;
             }
         }
-        solve_lp(num_active_constr, n, R, ridx, active_constr);
+        double soln[n+1];
+        solve_lp(num_active_constr, n, R, ridx, soln, active_constr);
+        write_soln("soln.txt", n+1, soln);
     }
 
     if (rank == 0) {
