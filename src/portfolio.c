@@ -4,9 +4,17 @@
 #include <time.h>
 #include <math.h>
 #include <glpk.h>             /* GNU GLPK linear/mixed integer solver */
-#include "mt19937p.h"
 #include <mpi.h>
+#include "mt19937p.h"
+#include "rnglib.h"
+#include "ranlib.h"
 
+/*
+    R is the random contraint data in row major memory layout
+    ridx is an N array of integers 
+    soln is an array of length (n+1) soln[n] is t (objective value)
+    active_constr is an N-length 0-1 array
+*/
 void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_constr)
 {
     double tol = 1.0e-14;
@@ -24,10 +32,12 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
 
     glp_add_rows(lp, N+1);
 
+    // Sampled constraints are ">= 0"
     for (int i = 1; i <= N; i++) {
         glp_set_row_bnds(lp, i, GLP_LO, 0.0, 0.0);
     }
   
+    // Sum = 1 constraint
     glp_set_row_name(lp, N+1, "sum");
     glp_set_row_bnds(lp, N+1, GLP_FX, 1.0, 1.0);
   
@@ -49,8 +59,9 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
     // }
 
     int idx = 1;
-    // Random constraints
+    // Sampled constraints
     for (int i = 1; i <= N; i++) {
+        // Uncertain assets
         for (int j = 1; j < n; j++) {
             ia[idx] = i;
             ja[idx] = j;
@@ -95,8 +106,8 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
     glp_smcp param;
     glp_init_smcp(&param);
     param.meth = GLP_DUAL;
-    glp_std_basis(lp);
-    glp_simplex(lp, NULL);
+    //glp_std_basis(lp);
+    glp_simplex(lp, &param);
   
     double z = glp_get_obj_val(lp);
     printf("z = %g\n", z);
@@ -126,17 +137,55 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
     free(ar);
 }
 
-double* generate_random_constraints(int seed, int N, int n) 
+double* generate_random_constraints(char* seed, int N, int n) 
 {
-    struct mt19937p state;
-    sgenrand(seed, &state);
+    // struct mt19937p state;
+    // sgenrand(seed, &state);
+
+    initialize();
+    int seed1, seed2;
+    phrtsd(seed, &seed1, &seed2);
+    set_initial_seed(seed1, seed2);
+    // for (int i = 0; i < 10; i++)
+    //     printf("Random N(0,1): %g\n", gennor(0, 1));
+
+    float meanv[n];
+    for (int i = 0; i < n; i++) {
+        meanv[i] = 0.094278;
+    }
+
+    // float varv[n];
+    // for (int i = 0; i < n; i++) {
+    //     varv[i] = 1;
+    // }
+    // float* covm = setcov(n, varv, 0);
+    float covm[n*n];
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            if (i == j) {
+                covm[i+j*n] = 0.002064;
+            }
+            else{
+                covm[i+j*n] = 0;
+            }
+        }
+    }
+
+    float parm[n*(n+3)/2+1];
+    setgmn(meanv, covm, n, parm);
 
     // Row major layout
     double* R = malloc(N*n*sizeof(double));
+    float* mvn;
     for (int i = 0; i < N; i++) {
+        float* mvn = genmn(parm);
         for (int j = 0; j < n; j++) {
-            R[i*n + j] = 1.0 + 0.1*genrand(&state) + 0.01; // [1.01, 1.11]
+            R[i*n + j] = exp(mvn[j]);
+            // R[i*n + j] = 1.0 + 0.1*genrand(&state) + 0.01; // [1.01, 1.11]
         }
+        free(mvn);
     }
 
     return R;
@@ -175,12 +224,15 @@ int main(int argc, char** argv)
         }
     }
 
-    glp_term_out(GLP_OFF);
+    // glp_term_out(GLP_OFF);
     
     double* R;
     int* active_constr;
     if (rank == 0) {
-        R = generate_random_constraints(time(NULL), N*num_p, n-1);
+        time_t curr_time;
+        time(&curr_time);
+        char* seed = ctime(&curr_time);
+        R = generate_random_constraints(seed, N*num_p, n-1);
         active_constr = (int*) calloc(N*num_p, sizeof(int));
     }
 

@@ -10,7 +10,7 @@ test: $(BIN)/test.o $(BIN)/mt19937p.o
 	mkdir -p $(BIN)/
 	$(CC) $(CFLAGS) $^ -o $(BIN)/$@
 
-portfolio: $(BIN)/portfolio.o $(BIN)/mt19937p.o
+portfolio: $(BIN)/portfolio.o $(BIN)/mt19937p.o $(BIN)/rnglib.o $(BIN)/ranlib.o
 	mkdir -p $(BIN)/
 	$(CC) $(CFLAGS) $^ -o $(BIN)/$@
 
