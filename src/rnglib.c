@@ -999,9 +999,9 @@ void initialize ( )
   g = 0;
   cgn_set ( g );
 
-  printf ( "\n" );
-  printf ( "INITIALIZE - Note:\n" );
-  printf ( "  The RNGLIB package has been initialized.\n" );
+  // printf ( "\n" );
+  // printf ( "INITIALIZE - Note:\n" );
+  // printf ( "  The RNGLIB package has been initialized.\n" );
 
   return;
 }
