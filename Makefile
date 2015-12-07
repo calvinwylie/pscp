@@ -1,5 +1,6 @@
-CC=mpicc
-CFLAGS=-lglpk
+CC=icc
+CFLAGS=-fopenmp -I/share/apps/utils/include -L/share/apps/utils/lib -lglpk \
+       -O3 -no-prec-div -xcore-avx2 -ipo
 
 SRC=src
 BIN=bin

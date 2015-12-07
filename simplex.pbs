@@ -1,0 +1,33 @@
+#!/bin/sh -l
+
+#PBS -l nodes=1:ppn=24
+#PBS -N simplex
+#PBS -j oe
+
+module load cs5220
+cd $PBS_O_WORKDIR
+
+for (( i = 1 ; i <= 50 ; i++ )); do
+  sleep 1
+  bin/portfolio -n 200 -N 250
+done
+
+for (( i = 1 ; i <= 50 ; i++ )); do
+  sleep 1
+  bin/portfolio -n 200 -N 500
+done
+
+for (( i = 1 ; i <= 50 ; i++ )); do
+  sleep 1
+  bin/portfolio -n 200 -N 1000
+done
+
+for (( i = 1 ; i <= 50 ; i++ )); do
+  sleep 1
+  bin/portfolio -n 200 -N 2500
+done
+
+for (( i = 1 ; i <= 50 ; i++ )); do
+  sleep 1
+  bin/portfolio -n 200 -N 5000
+done

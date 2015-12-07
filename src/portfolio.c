@@ -4,7 +4,8 @@
 #include <time.h>
 #include <math.h>
 #include <glpk.h>             /* GNU GLPK linear/mixed integer solver */
-#include <mpi.h>
+// #include <mpi.h>
+#include <omp.h>
 #include "mt19937p.h"
 #include "rnglib.h"
 #include "ranlib.h"
@@ -15,7 +16,7 @@
     soln is an array of length (n+1) soln[n] is t (objective value)
     active_constr is an N-length 0-1 array
 */
-void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_constr)
+void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_constr, int meth)
 {
     double tol = 1.0e-14;
     int size = (N+1)*(n+1) + 1; // We add one because GLPK indexes arrays
@@ -33,7 +34,8 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
     glp_add_rows(lp, N+1);
 
     // Sampled constraints are ">= 0"
-    for (int i = 1; i <= N; i++) {
+    int i;
+    for (i = 1; i <= N; i++) {
         glp_set_row_bnds(lp, i, GLP_LO, 0.0, 0.0);
     }
   
@@ -44,7 +46,7 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
     glp_add_cols(lp, n+1);
   
     // Nonnegative variables y
-    for (int i = 1; i <= n; i++) {
+    for (i = 1; i <= n; i++) {
         glp_set_col_bnds(lp, i, GLP_LO, 0.0, 0.0);
         glp_set_obj_coef(lp, i, 0.0);
     }
@@ -60,9 +62,10 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
 
     int idx = 1;
     // Sampled constraints
-    for (int i = 1; i <= N; i++) {
+    for (i = 1; i <= N; i++) {
+        int j;
         // Uncertain assets
-        for (int j = 1; j < n; j++) {
+        for (j = 1; j < n; j++) {
             ia[idx] = i;
             ja[idx] = j;
             ar[idx] = R[ ridx[(i-1)] * (n-1) + (j-1) ];
@@ -83,7 +86,7 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
     }
 
     // Sum = 1 constraint
-    for (int i = 1; i <= n; i++) {
+    for (i = 1; i <= n; i++) {
         ia[idx] = N+1;
         ja[idx] = i;
         ar[idx] = 1.0;
@@ -105,14 +108,14 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
 
     glp_smcp param;
     glp_init_smcp(&param);
-    param.meth = GLP_DUAL;
+    param.meth = meth;
     //glp_std_basis(lp);
     glp_simplex(lp, &param);
   
     double z = glp_get_obj_val(lp);
-    printf("z = %g\n", z);
+    // printf("z = %g\n", z);
     if (soln) {
-        for (int i = 0; i < n; i++) {
+        for (i = 0; i < n; i++) {
             double y = glp_get_col_prim(lp, i+1);
             soln[i] = y;
             // printf("y%d = %g\n", i, y);
@@ -123,7 +126,7 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
     }
   
 
-    for (int i = 1; i <= N; i++) {
+    for (i = 1; i <= N; i++) {
         double slack = glp_get_row_prim(lp, i);
         active_constr[i-1] = fabs(slack) < tol ? 1 : 0;
         // printf("constr%d %d\n", i, active_constr[i-1]);
@@ -137,7 +140,7 @@ void solve_lp(int N, int n, double* R, int* ridx, double* soln, int* active_cons
     free(ar);
 }
 
-double* generate_random_constraints(char* seed, int N, int n) 
+double* generate_random_constraints(char* seed, int N, int n, double* R) 
 {
     // struct mt19937p state;
     // sgenrand(seed, &state);
@@ -150,7 +153,8 @@ double* generate_random_constraints(char* seed, int N, int n)
     //     printf("Random N(0,1): %g\n", gennor(0, 1));
 
     float meanv[n];
-    for (int i = 0; i < n; i++) {
+    int i, j;
+    for (i = 0; i < n; i++) {
         meanv[i] = 0.094278;
     }
 
@@ -160,9 +164,9 @@ double* generate_random_constraints(char* seed, int N, int n)
     // }
     // float* covm = setcov(n, varv, 0);
     float covm[n*n];
-    for (int i = 0; i < n; i++)
+    for (i = 0; i < n; i++)
     {
-        for (int j = 0; j < n; j++)
+        for (j = 0; j < n; j++)
         {
             if (i == j) {
                 covm[i+j*n] = 0.002064;
@@ -177,11 +181,11 @@ double* generate_random_constraints(char* seed, int N, int n)
     setgmn(meanv, covm, n, parm);
 
     // Row major layout
-    double* R = malloc(N*n*sizeof(double));
+    // double* R = malloc(N*n*sizeof(double));
     float* mvn;
-    for (int i = 0; i < N; i++) {
-        float* mvn = genmn(parm);
-        for (int j = 0; j < n; j++) {
+    for (i = 0; i < N; i++) {
+        mvn = genmn(parm);
+        for (j = 0; j < n; j++) {
             R[i*n + j] = exp(mvn[j]);
             // R[i*n + j] = 1.0 + 0.1*genrand(&state) + 0.01; // [1.01, 1.11]
         }
@@ -198,7 +202,8 @@ void write_soln(const char* fname, int n, double* soln)
         fprintf(stderr, "Could not open output file: %s\n", fname);
         exit(-1);
     }
-    for (int i = 0; i < n; ++i) {
+    int i;
+    for (i = 0; i < n; ++i) {
         fprintf(fp, "%g\n", soln[i]);
     }
     fclose(fp);
@@ -207,9 +212,11 @@ void write_soln(const char* fname, int n, double* soln)
 int main(int argc, char** argv)
 {
     int rank, num_p;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_p);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // MPI_Init(&argc, &argv);
+    // MPI_Comm_size(MPI_COMM_WORLD, &num_p);
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    rank = 0;
+    num_p = 1;
 
     int n = 200;
     int N = 500;
@@ -224,7 +231,7 @@ int main(int argc, char** argv)
         }
     }
 
-    // glp_term_out(GLP_OFF);
+    glp_term_out(GLP_OFF);
     
     double* R;
     int* active_constr;
@@ -232,14 +239,15 @@ int main(int argc, char** argv)
         time_t curr_time;
         time(&curr_time);
         char* seed = ctime(&curr_time);
-        R = generate_random_constraints(seed, N*num_p, n-1);
+        R = malloc(N*num_p*(n-1)*sizeof(double));
+        generate_random_constraints(seed, N*num_p, n-1, R);
         active_constr = (int*) calloc(N*num_p, sizeof(int));
     }
 
-    double* R_local = malloc(N*(n-1)*sizeof(double));
-    int* active_constr_local = (int*) calloc(N, sizeof(int));
+    // double* R_local = malloc(N*(n-1)*sizeof(double));
+    // int* active_constr_local = (int*) calloc(N, sizeof(int));
 
-    MPI_Scatter(R, N*(n-1), MPI_DOUBLE, R_local, N*(n-1), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // MPI_Scatter(R, N*(n-1), MPI_DOUBLE, R_local, N*(n-1), MPI_DOUBLE, 0, MPI_COMM_WORLD);
     
     // for (int i = 0; i < N*(n-1); i++) {
     //     R_local[i] = R[i];
@@ -247,45 +255,52 @@ int main(int argc, char** argv)
     // }
 
     int ridx[N];
-    for (int i = 0; i < N; i++) {
+    int i;
+    for (i = 0; i < N; i++) {
         ridx[i] = i;
     }
-    solve_lp(N, n, R_local, ridx, NULL, active_constr_local);
+    double t0 = omp_get_wtime();
+    solve_lp(N, n, R, ridx, NULL, active_constr, GLP_PRIMAL);
+    double t1 = omp_get_wtime();
+    solve_lp(N, n, R, ridx, NULL, active_constr, GLP_DUAL);
+    double t2 = omp_get_wtime();
+    printf("%d %g %g\n", N, t1-t0, t2-t1);
 
     // for (int i = 0; i < N*(n-1); i++) {
     //     printf("%d: %g\n", i, R_local[i]);
     // }
 
-    MPI_Gather(active_constr_local, N, MPI_INT, active_constr, N, MPI_INT, 0, MPI_COMM_WORLD);
+    // MPI_Gather(active_constr_local, N, MPI_INT, active_constr, N, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Re-solve with just the active constraints...
-    if (rank == 0) {
+    // if (rank == 0) {
 
-        int num_active_constr = 0;
-        for (int i = 0; i < N*num_p; i++) {
-            num_active_constr += active_constr[i];
-        }
+    //     int num_active_constr = 0;
+    //     for (i = 0; i < N*num_p; i++) {
+    //         num_active_constr += active_constr[i];
+    //     }
 
-        int ridx[num_active_constr];
-        int count = 0;
-        for (int i = 0; i < N*num_p; i++) {
-            if (active_constr[i] == 1) {
-                ridx[count] = i;
-                count += 1;
-            }
-        }
-        double soln[n+1];
-        solve_lp(num_active_constr, n, R, ridx, soln, active_constr);
-        write_soln("soln.txt", n+1, soln);
-    }
+    //     int ridx[num_active_constr];
+    //     int count = 0;
+    //     for (i = 0; i < N*num_p; i++) {
+    //         if (active_constr[i] == 1) {
+    //             ridx[count] = i;
+    //             count += 1;
+    //         }
+    //     }
+    //     double soln[n+1];
+    //     solve_lp(num_active_constr, n, R, ridx, soln, active_constr);
+    //     write_soln("soln.txt", n+1, soln);
+    //     double t1 = omp_get_wtime();
+    // }
 
     if (rank == 0) {
         free(R);
         free(active_constr);
     }
 
-    free(R_local);
-    free(active_constr_local);
-    MPI_Finalize();
+    // free(R_local);
+    // free(active_constr_local);
+    // MPI_Finalize();
     return 0;
 }
