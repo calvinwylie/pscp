@@ -2,7 +2,7 @@ M = 100; % Number of macroreplications
 num_proc_settings = 4; % Number of processor number settings
 
 % Read in the data from a text file "sensitivity_data.txt"
-fileID = fopen('sensitivity_data.txt','r'); % Currently random data
+fileID = fopen('../raw/sensitivity_data.txt','r'); % Currently random data
 formatSpec = '%f';
 data = fscanf(fileID,formatSpec,[M, num_proc_settings]);
 fclose(fileID);

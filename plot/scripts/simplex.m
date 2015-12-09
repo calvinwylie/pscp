@@ -6,7 +6,7 @@ num_settings = length(num_constr);
 
 % Read in the data from a text file "simplex_data.txt"
 sizedata = [3, M*num_settings];
-fileID = fopen('simplex_data.txt','r');
+fileID = fopen('../raw/simplex_data.txt','r');
 formatSpec = '%f %f %f';
 data = fscanf(fileID,formatSpec,sizedata);
 fclose(fileID);

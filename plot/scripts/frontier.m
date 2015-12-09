@@ -9,7 +9,7 @@ num_assets = 200; % num_assets = length(y*)
 
 % Read in the data from a text file "frontier_data.txt"
 sizedata = [3+num_assets, M*num_settings];
-fileID = fopen('frontier_data.txt','r');
+fileID = fopen('../raw/frontier_data.txt','r');
 formatSpec = '%f';
 data = fscanf(fileID,formatSpec, sizedata);
 fclose(fileID);
@@ -25,6 +25,7 @@ R = 5000;
 % Set confidence level for CIs
 alpha = 0.05;
 z_alpha_over_2 = norminv(1-alpha/2);
+t_alpha_over_2 = tinv(1-alpha/2, M-1);
 
 %%
 % Suppose we extract all of the times into a matrix "times"
@@ -104,6 +105,8 @@ avg_viol_prob = zeros(1,num_settings);
 avg_prob_viol_prob_gr_eps = zeros(1,num_settings);
 lower_CI_est_viol_prob = zeros(1,num_settings);
 upper_CI_est_viol_prob = zeros(1,num_settings);
+lowerbound = zeros(1,num_settings);
+upperbound = zeros(1,num_settings);
 lower_CI_viol_prob_gr_eps = zeros(1,num_settings);
 upper_CI_viol_prob_gr_eps = zeros(1,num_settings);
 
@@ -136,12 +139,24 @@ for i = 1:num_settings
 	end
 	avg_viol_prob(i) = mean(est_viol_prob);
 	avg_prob_viol_prob_gr_eps(i) = mean(viol_prob_gr_eps);
+    x = sum(viol_prob_gr_eps);
 
-	% Construct CIs
-	lower_CI_est_viol_prob(i) = min(z_alpha_over_2*(sqrt(avg_viol_prob(i)*(1-avg_viol_prob(i))/sqrt(M))),avg_viol_prob(i));
-	upper_CI_est_viol_prob(i) = z_alpha_over_2*(sqrt(avg_viol_prob(i)*(1-avg_viol_prob(i))/sqrt(M)));
-	lower_CI_viol_prob_gr_eps(i) = min(z_alpha_over_2*(sqrt(avg_prob_viol_prob_gr_eps(i)*(1-avg_prob_viol_prob_gr_eps(i))/sqrt(M))),avg_prob_viol_prob_gr_eps(i));
-	upper_CI_viol_prob_gr_eps(i) = z_alpha_over_2*(sqrt(avg_prob_viol_prob_gr_eps(i)*(1-avg_prob_viol_prob_gr_eps(i))/sqrt(M)));
+	% Construct CIs (Normal approximation of Bernoulli)
+	%lower_CI_est_viol_prob(i) = min(z_alpha_over_2*(sqrt(avg_viol_prob(i)*(1-avg_viol_prob(i))/sqrt(M))),avg_viol_prob(i));
+	%upper_CI_est_viol_prob(i) = z_alpha_over_2*(sqrt(avg_viol_prob(i)*(1-avg_viol_prob(i))/sqrt(M)));
+	%lower_CI_viol_prob_gr_eps(i) = min(z_alpha_over_2*(sqrt(avg_prob_viol_prob_gr_eps(i)*(1-avg_prob_viol_prob_gr_eps(i))/sqrt(M))),avg_prob_viol_prob_gr_eps(i));
+	%upper_CI_viol_prob_gr_eps(i) = z_alpha_over_2*(sqrt(avg_prob_viol_prob_gr_eps(i)*(1-avg_prob_viol_prob_gr_eps(i))/sqrt(M)));
+    
+    % Construct CIs (Normality assumption from CLT)
+    lower_CI_est_viol_prob(i) = min(t_alpha_over_2*std(est_viol_prob)/sqrt(M),avg_viol_prob(i));
+    upper_CI_est_viol_prob(i) = t_alpha_over_2*std(est_viol_prob)/sqrt(M);
+    
+    % Construct CIs (Exact Bernoulli CI from Clopper-Pearson
+    %%% NEED TO FIX THESE!
+    lowerbound(i) = 1/(1+(M-x+1)/(x*finv(alpha/2,2*x,2*(M-x+1))));
+    upperbound(i) = 1/(1+(M-x)/((x+1)*finv(1-alpha/2,2*(x+1),2*(M-x))));
+    lower_CI_viol_prob_gr_eps(i) = min(avg_prob_viol_prob_gr_eps(i) - lowerbound(i), avg_prob_viol_prob_gr_eps(i));
+	upper_CI_viol_prob_gr_eps(i) = upperbound(i) - avg_prob_viol_prob_gr_eps(i);
 end
 
 %%
