@@ -1,0 +1,23 @@
+\begin{thebibliography}{1}
+
+\bibitem{campi05}
+{\sc G.~Calafiore and M.~C. Campi}, {\em Uncertain convex programs: randomized
+  solutions and confidence levels}, Mathematical Programming, 102 (2005),
+  pp.~25--46.
+
+\bibitem{campi06}
+\leavevmode\vrule height 2pt depth -1.6pt width 23pt, {\em The scenario
+  approach to robust control design}, IEEE Transactions on Automatic Control,
+  51 (2006), pp.~742--753.
+
+\bibitem{campi08}
+{\sc M.~C. Campi and S.~Garatti}, {\em The exact feasibility of randomized
+  solutions of uncertain convex programs}, SIAM Journal on Optimization, 19
+  (2008), pp.~1211--1230.
+
+\bibitem{carlone2014}
+{\sc L.~Carlone, V.~Srivastava, F.~Bullo, and G.~C. Calafiore}, {\em
+  Distributed random convex programming via constraints consensus}, SIAM
+  Journal on Control and Optimization, 52 (2014), pp.~629--662.
+
+\end{thebibliography}
