@@ -24,7 +24,7 @@ Solving a sampled convex program allows for finding solutions that are feasible 
 Sampled convex problems are more easily solved because they are characterized by a finite number of constraints and require only that one can obtain i.i.d. samples of the uncertain parameters.
 However, the required number of samples may still result in a sampled convex program that is expensive to solve exactly.
 We consider obtaining approximate solutions to these sampled convex programs by distributing the constraints across processors and solving smaller subproblems followed by a consensus on the active constraints.
-We consider a classical portfolio-optimization problem and study the tradeoffs that arise from this method: including wall-clock time, violation probability, and feasibility probability.
+We consider a classical portfolio-optimization problem and study the trade-offs that arise from this method: including wall-clock time, violation probability, and feasibility probability.
 
 \section*{Introduction}
 Chance constrained problems model many real-word applications in areas as diverse as finance, energy, and emergency services \cite{bental09}.
@@ -70,59 +70,42 @@ in \cite{campi06} and then later by Campi and Garatti in \cite{campi08} to the s
 \[ \mathbb{P}^N\{V(x_N^*) > \epsilon\} = \sum_{i=0}^{d-1} \binom{N}{i} \epsilon^i (1-\epsilon)^{N-i}. \]
 Note that all of these bounds are distribution-free which means that $N$ can be calculated without prior knowledge of $\mathbb{P}$.
 
-We are interested in the case when \ref{scp} is still computationally expensive to solve due to the large number of samples (and therefore constraints) needed to reach a solution that is feasible for \ref{ccp} with high probability.
-For example, when $d = 200$, $\epsilon = 0.05$ and $\beta = 1 \times 10^{-5}$ are small, the resulting sample size is $N = 5312$.
-With several thousand constraints, existing solution methods for mixed integer programs or semi-definite programs might take too long to run to completion.
-For instances such as these, it is possible to decompose \ref{scp} into smaller sampled convex programs and solving them in parallel.
-Because the subproblems are of smaller dimension, they may be solved faster than \ref{scp}.
-However because each subproblem is only considering a subset of the constraints, there is a loss of optimality in solving these problems.
-Still the speedup in computational time may be worth the loss of \ref{ccp} feasibility.
-In particular, we would like to study how much is lost with respect to \ref{ccp} feasibility by taking the active constraints from the subproblems and solving a final sampled convex program with these constraints.
+For modest $\epsilon$ and $\beta$, the required $N$ may be large enough to cause the resulting \ref{scp} instance to be computationally expensive to solve exactly.
+Even for instances in which $N$ is modest, but the number of decision variables, $n$, is large, solving \ref{scp} may pose challenges.
+When either the decision variables or constraints number in the thousands, existing software for solving mixed integer programs or semi-definite programs might take too long to run to completion.
+Without loss of generality, we will assume that the number of constraints is the limiting factor in solving \ref{scp} directly; if the number of decision variables is the issue, one can consider taking the dual of \ref{scp}.
 
-Even for problems for which $N$ is not too large, but the number of variables $n$ is far too large, this method of parallelism can be applied by taking the dual of \ref{scp} and then distributing the constraints of the dual across processors.
+One idea for addressing this challenge is to decompose \ref{scp} into smaller sampled convex programs and solve them in parallel before forming some consensus across the subproblems.
+Because the subproblems have only a fraction of the constraints of \ref{scp}, they can be solved faster.
+However because each subproblem is only considering a subset of the constraints, there is a loss associated with this simplification: namely the solution returned will likely violate some of the constraints of \ref{scp} and therefore is less likely to be feasible for \ref{ccp}.
+Furthermore, because the solution violates some of the constraints, its corresponding objective function value will be less than $c^T x_N^*$ (in the case where the objective is to minimize $c^T x$).
+Still, the speedup in terms of wall-clock time due to parallelism may be worth the loss in the probability that the solution is \ref{ccp}-feasible.
+%In particular, we would like to study how much is lost with respect to \ref{ccp} feasibility by taking the active constraints from the subproblems and solving a final sampled convex program with these constraints.
 
 \section*{Method}
+A feasible convex program in $n$ dimensional space will have at most $n$ support constraints at the optimal solution.
+Therefore the problem of finding an optimal solution to \ref{scp} can be viewed as the problem of identifying the $n$ supporting constraints at $x_N^*$.
 
-A recent paper \cite{carlone2014} studies solving large-scale convex programs in a distributed fashion.
-It assume some topology on the communication network connecting the processors.
-Each processor solves a convex program with a subset of the constraints.
-It then identifies the active constraints at that solution and passes them to other processors according to the communication network.
-Each processor then adds in the incoming constraints to their personal set and resolves their subproblem.
-It was proven that after a finite number of iterations, a.s., all processors will reach a consensus about which constraints are active for the solution to the original problem.
+A recent paper by Carlone et al. \cite{carlone2014} studies solving large-scale convex programs in a distributed fashion.
+It assumes a directed graph topology on the communication network connecting the parallel processors.
+Initially, each processor is given a subset of the constraints of the master problem with which it solves a convex subproblem.
+It then identifies the support constraints at that solution and passes them to other processors according to the network topology.
+Each processor receives the incoming constraints and resolves a convex subproblem with their original set of constraints the new constraints.
+It was proven that after an almost surely finite number of iterations, all processors will reach a consensus about which constraints are supporting for the solution to the master problem.
+Note that the objective in \cite{carlone2014} is to recover the exact solution to the convex program whereas we are interested in finding an approximate solution in less time.
 
-The objective in \cite{carlone2014} is to recover the exact solution to the convex program.
-However in practice, this procedure would take far too long to run, especially since there is no bound on the number of iterations needed for consensus.
-The only instance you would fully run a procedure like this is if the master problem is too large to solve with existing software.
-
-Instead, our method will be a variation of this procedure which only runs for two iterations.
-The topology on the processors is that all workers will pass their active constraints to a single master processor, who will then use these constraints to solve another convex program.
+In practice, this procedure would take far too long to run to completion, especially since there is no bound on the number of iterations needed for consensus.
+%The only instance you would fully run a procedure like this is if the master problem is too large to solve with existing software.
+Instead, we will consider a variation of this procedure which only runs for two iterations and the topology of the communication network is a star graph in which all worker processors pass supporting constraints to a master processor.
 Because there are only two iterations, the solutions returned will likely not be the exact solution to \ref{scp}.
-However this approximate solution may be calculated in less time, and thus it may be worth a loss in \ref{ccp} feasibility.
-We wish to explore this tradeoff to get a sense of what the best mix would be.
+However this approximate solution may be calculated in less time, and thus it may be worth a loss in the probability of being a \ref{ccp}-feasible solution.
 
-Another tradeoff comes from changing the number of processors.
-With more processors, the subproblems are smaller, but the total number of constraints in the second stage problem is larger.
-This will impact the wall-clock time of the procedure in two conflicting ways.
-The main question will be to determine what the optimal number of processors to use is.
-
-Another way to view the problem is to assume with are willing to use the wall-clock time need to solve \ref{scp}.
-Using that time, what is the best number of processors to use and number of constraints to give to each processor. Because of the time savings from solving smaller problems, we may be able to use more than $N$ samples.
-
-We divide the $N$ samples across $p$ processors and solve each subproblem which has $N/p$ constraints.
-We don't want to use so many processors that $N/p < n$.
-For each subproblem, we identify the active constraints (of which there should be $n$ unless the problem is degenerate) by checking which $\delta_i$ satisfy $f(x_N^*, \delta_i) = 0$.
-
-Motivated by the fact that a convex program in $n$ dimensional space will have at most $n$
-support contraints at the optimal solution, the problem of finding an optimal solution to \ref{scp} can be viewed as the problem of identifying the $n$ supporting constraints.
-Can we build a consensus on what the supporting constraints are by looking at solutions of 
-smaller sampled convex programs? 
-
-For an example, suppose we determine that $N$ samples are needed to reach our desirable \ref{ccp} feasibility probability, and suppose that we have available one ``master'' processor
-and $p$ ``slave'' processors available.
+Suppose that we have available one ``master'' processor and $p$ ``worker'' processors available.
 For simplicity, suppose that $N = mp$ for some positve integers $m > n$.
-Consider the following procedure:
 
-\textbf{Parallel Sampled Convex Programming}
+We describe our procedure as follows:
+
+\textbf{Parallel \ref{scp} Procedure}
 \begin{enumerate}
 \item For each processor $1 \leq j \leq p$, solve the sampled convex program
 \begin{equation*}
@@ -133,9 +116,9 @@ Consider the following procedure:
     & & f(x,\delta_i) \leq 0 \quad i = m(j-1) + 1, \ldots, mj.
 \end{aligned}
 \end{equation*}
-Let $x_j^*$ be the corresponding solution.
+Let $\tilde{x}_j$ be the corresponding solution.
 \item For each slave processor $1 \leq j \leq p$, determine the supporting constraints of the 
-optimal solution $x_j^*$.
+optimal solution $\tilde{x}_j$.
 Assuming that each sampled convex program is fully-supported with probability one,
 label the sample corresponding to these constraints $\delta_1^j, \ldots, \delta_n^j$.
 Send these samples to the master processor.
@@ -148,10 +131,23 @@ Send these samples to the master processor.
     & & f(x,\delta_i^j) \leq 0 \quad i = 1,\ldots,k \text{ and } j = 1,\ldots,p.
 \end{aligned}
 \end{equation*}
-Let $x^{**}$ be the corresponding solution.
+Let $\tilde{x}$ be the corresponding solution.
 \end{enumerate}
 
-Another possible direction to look is to take $x^{**}$ as some convex combination of the
+For each subproblem, we identify the support constraints (of which there should be $n$ unless the problem is degenerate) by checking which constraints are active at $\tilde{x}_j$, i.e. which $\delta_i$ satisfy $f(\tilde{x}_j, \delta_i) = 0$.
+
+
+Changing the number of processors $p$ has interesting effects on the main performance measures: wall-clock time and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$.
+With more processors, the subproblems are smaller, but the total number of constraints passed to the master program ($np$) is larger.
+This will impact the wall-clock time of the procedure in two conflicting ways.
+And as the number of constraints in the master problem increases, we would expect $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$ to decrease.
+The main research question of this study will be: given these trade-offs, what is the optimal number of processors to use?
+
+Another way to view the problem is to assume with are willing to commit to the wall-clock time need to solve \ref{scp}.
+But instead of solving \ref{scp} we want to use the time to take more than $N$ samples and apply the distributed procedure.
+Using that time, what is the best number of processors to use and number of constraints to give to each processor and is the performance of the distributed procedure competitive with simply solving \ref{scp}.
+
+Another possible direction to look is to take $\tilde{x}$ as some convex combination of the
 optimals solutions from the subproblems.  Intuitively, if each of the subproblems somehow
 approximate \ref{ccp}, then somehow ``averaging'' them should give us at least something
 no worse.
