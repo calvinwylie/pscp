@@ -1,0 +1,14 @@
+#!/bin/sh -l
+
+#PBS -l nodes=1:ppn=24
+#PBS -N portfolio-4
+#PBS -j oe
+
+module load cs5220
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/share/apps/utils/lib
+cd $PBS_O_WORKDIR
+
+for (( i = 1 ; i <= 400 ; i++ )); do
+  sleep 1
+  mpirun -n 4 bin/portfolio -n 200 -N 1328
+done
