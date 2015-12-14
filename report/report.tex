@@ -136,7 +136,6 @@ Let $\tilde{x}$ be the corresponding solution.
 
 For each subproblem, we identify the support constraints (of which there should be $n$ unless the problem is degenerate) by checking which constraints are active at $\tilde{x}_j$, i.e. which $\delta_i$ satisfy $f(\tilde{x}_j, \delta_i) = 0$.
 
-
 Changing the number of processors $p$ has interesting effects on the main performance measures: wall-clock time and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$.
 With more processors, the subproblems are smaller, but the total number of constraints passed to the master program ($np$) is larger.
 This will impact the wall-clock time of the procedure in two conflicting ways.
@@ -154,40 +153,40 @@ no worse.
 
 \section*{Example Problem}
 
-We consider the classical portfolio optimization problem of selecting an allocation of one dollar over $n$ assets with uncertain payouts $r_i$ for $i = 1, \ldots, n$.
-Of these assets, we assume that the $n$th asset has a fixed payout (it might, for example, represent a bond with a certain return).
-Our objective is to maximize the value-at-risk (VaR) at a risk level of $\epsilon$.
-Here VaR is the $\epsilon$-percentile of the distribution of returns for a particular allocation.
+We consider the classical portfolio optimization problem of selecting an allocation $y$ for investing one dollar over $n$ assets with uncertain returns $r_i$ for $i = 1, \ldots, n$.
+Of these assets, we assume that the $n$th asset has a fixed payout; it might, for example, represent a bond with a certain return.
+Each allocation of assets defines a portfolio.
+Our objective is to choose a portfolio that maximizes the value-at-risk (VaR), denoted by $t$, for an acceptable risk level $\epsilon$.
+Here we refer to VaR as the $\epsilon$-percentile of the distribution of returns for a particular portfolio as opposed to the $\epsilon$-percentile of the distribution of losses.
+
 Therefore we have the following chance constrained program:
 \begin{align}\label{Portfolioccp}
 \begin{split}
 \begin{aligned}
-    & \underset{y, t}{\text{maximize}}
+    & \underset{y, \,t}{\text{maximize}}
     & & t \\
     & \text{subject to}
     & & \mathbb{P}\left\{ \sum_{i=1}^{n-1} r_i y_i + r_n y_n \geq t \right\} \geq 1-\epsilon \\
     & & & \sum_{i=1}^n y_i = 1 \\
-    & & & y_i \geq 0 \quad \forall i = 1, \ldots, n.
+    & & & y_i \geq 0 \quad i = 1, \ldots, n.
 \end{aligned}
 \end{split} \tag{Portfolio CCP}
 \end{align}
 
-Here the chance constrained program models the acceptable level of risk in an investment.
-We will assume that the vector of payouts $y$ is distributed according to a multivariate log-normal distribution with mean vector $\mu$ and covariance matrix $\Sigma$.
+We will assume that the vector of uncertain returns $(r_1, \ldots, r_{n-1})$ is distributed according to a multivariate log-normal distribution with mean vector $\mu$ and covariance matrix $\Sigma$.
 A log-normal is typical for asset payouts because it is unimodal with support on the positive real line.
-Even with knowledge of the probability distribution of the payouts, the feasible region is non-convex. (Is it really?)
+Even with knowledge of the probability distribution of the returns, the feasible region is non-convex. (Is it really?)
 
-
-From taking samples $r^{(j)}$ for $j = 1, \ldots, N$, the corresponding sampled convex program is 
+By taking samples $r^{(j)}$ for $j = 1, \ldots, N$, the corresponding sampled convex program is 
 \begin{align}\label{Portfolioscp}
 \begin{split}
 \begin{aligned}
-    & \underset{y, t}{\text{maximize}}
+    & \underset{y, \,t}{\text{maximize}}
     & & t \\
     & \text{subject to}
     & & \sum_{i=1}^{n-1} r_i^{(j)} y_i + r_n^{(j)} y_n \geq t \quad j = 1, \ldots, N \\
     & & & \sum_{i=1}^n y_i = 1 \\
-    & & & y_i \geq 0 \quad \forall i = 1, \ldots, n.
+    & & & y_i \geq 0 \quad i = 1, \ldots, n.
 \end{aligned}
 \end{split} \tag{Portfolio SCP$_N$}
 \end{align}
@@ -195,10 +194,10 @@ From taking samples $r^{(j)}$ for $j = 1, \ldots, N$, the corresponding sampled 
 
 \ref{Portfolioscp} has several nice properties:
 \begin{itemize}
-\item The objective function and constraints of \ref{Portfolioscp} are linear. Therefore we can use the simplex method to solve the sampled convex subproblems.
+\item The objective function and constraints of \ref{Portfolioscp} are linear. Therefore we can use the simplex method to solve the sampled convex program and subproblems.
 \item Because of the fixed asset $n$, it is possible to easily find a basic feasible solution by taking $y_n = 1$, $y_i = 0$ for $i = 1, \ldots, n-1$ and $t = r_n$.
-\item The feasible allocations $y$ sit within a simplex.
-\item Is $t$ also bounded by the some of the VaR for each asset.
+\item The feasible allocations $y$ sit within a unit simplex.
+\item Is $t$ also bounded by the sum of the VaR for each asset?
 \end{itemize}
 
 Here we take $\epsilon = 0.05$ and $\beta = 1 \times 10^{-5}$ to get a required sample size of $N = 5312$.
@@ -208,7 +207,7 @@ Here we take $\epsilon = 0.05$ and $\beta = 1 \times 10^{-5}$ to get a required 
 We use MPI for communication across processors and glpk as our simplex solver.
 
 
-Figure \ref{fig:fig_simplex_time} shows some experimental timings for the simplex and dual simplex methods applied to our problem with $n = 200$.
+Figure \ref{fig:fig_simplex_time} shows some experimental timings for the simplex and dual simplex methods applied to our problem with $n = 200$ assets.
 It shows a superlinear increase in wall clock time with respect to the number of constraints.
 This trend is promising for us to decompose the \ref{Portfolioscp} into smaller subproblems to achieve time savings through parallelism.
 
@@ -221,15 +220,15 @@ This trend is promising for us to decompose the \ref{Portfolioscp} into smaller 
 
 
 \section*{Experiments}
+Let $\tilde{x} = (\tilde{y}, \tilde{t})$ denote the solution returned by running our parallel \ref{scp} procedure.
+Note that even though we know the distribution $\mathbb{P}$, calculating $V(\tilde{x})$ exactly is intractable.
+Instead we resort to estimating via Monte Carlo simulation: obtaining $R$ i.i.d. realizations of $r$ and calculating
+\[ \hat{V}(\tilde{x}) = \frac{1}{R} \sum_{j = 1}^R \mathbf{1}\left\{ \sum_{i=1}^{n-1} r_i^{(j)} \tilde{y}_i + r_n^{(j)} \tilde{y}_n < \tilde{t}\right\}. \]
 
-However, $V(x_N^*)$ cannot be explicitly calculated unless we have an analytical form for $\mathbb{P}$.
-Instead we often resort to estimating $V(x_N^*)$ via Monte Carlo simulation: obtaining $R$ i.i.d. samples of $\delta$ and calculating
-\[ \hat{V}(x_N^*) = \frac{1}{R} \sum_{i = 1}^R \mathbf{1}\{f(x_N^*, \delta_i) > 0\}. \]
-
-We take $M$ macro-replications of the procedure and calculate the following point estimates of $E[V(x^{**})]$ and $\mathbb{P}\{V(x^{**}) > \epsilon\}$:
-\[ \widehat{E[V(x^{**})]} := \frac{1}{M} \sum_{i=1}^M \hat{V}(x^{**}), \]
+We then $M$ macro-replications of the procedure, with corresponding solutions $\tilde{x}^{(k)}$ for $k = 1, \ldots, M$, and calculate the following point estimates of $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$:
+\[ \widehat{\mathbb{E}[V(\tilde{x})]} := \frac{1}{M} \sum_{k=1}^M \hat{V}(\tilde{x}^{(k)}), \]
 and
-\[ \widehat{\mathbb{P}\{V(x^{**}) > \epsilon\}} := \frac{1}{M} \sum_{i=1}^M \mathbf{1}\left(\hat{V}(x^{**}) > \epsilon\right). \]
+\[ \widehat{\mathbb{P}\{V(\tilde{x}) > \epsilon\}} := \frac{1}{M} \sum_{i=1}^M \mathbf{1}\left\{\hat{V}(\tilde{x}) > \epsilon\right\}. \]
 We use exact binomial tests (Clopper-Pearson) to form approximate confidence intervals for these two performance measures.
 
 \begin{figure}[ht]
@@ -242,35 +241,35 @@ We use exact binomial tests (Clopper-Pearson) to form approximate confidence int
 \begin{figure}[ht]
 	\centering
 		\includegraphics{../plot/figs/objfnval_num_proc.png}
-	\caption{VaR $t^*$ by Number of Processors}
+	\caption{VaR $\tilde{t}$ by Number of Processors}
 	\label{fig:objfnval_num_proc}
 \end{figure}
 
 \begin{figure}[ht]
 	\centering
 		\includegraphics{../plot/figs/wct_objfnval_frontier.png}
-	\caption{Trade-off between Time and Var $t^*$}
+	\caption{Trade-off between Time and VaR $\tilde{t}$}
 	\label{fig:wct_objfnval_frontier}
 \end{figure}
 
 \begin{figure}[ht]
 	\centering
 		\includegraphics{../plot/figs/expviolprob_numproc.png}
-	\caption{$E[V(x^{**})]$ by Number of Processors}
+	\caption{$\mathbb{E}[V(\tilde{x})]$ by Number of Processors}
 	\label{fig:expviolprob_numproc}
 \end{figure}
 
 \begin{figure}[ht]
 	\centering
 		\includegraphics{../plot/figs/probviolprobgreateps_numproc.png}
-	\caption{$\mathbb{P}\{V(x^{**}) > \epsilon \}$ by Number of Processors}
+	\caption{$\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ by Number of Processors}
 	\label{fig:probviolprobgreateps_numproc}
 \end{figure}
 
 \begin{figure}[ht]
 	\centering
 		\includegraphics{../plot/figs/wct_probviolprobgreateps_frontier.png}
-	\caption{Trade-off between Time and $\mathbb{P}\{V(x^{**}) > \epsilon \}$}
+	\caption{Trade-off between Time and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$}
 	\label{fig:fig_simplex_time}
 \end{figure}
 
