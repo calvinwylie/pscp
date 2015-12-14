@@ -155,8 +155,16 @@ double* generate_random_constraints(char* seed, int N, int n, double* R)
     //     printf("Random N(0,1): %g\n", gennor(0, 1));
 
     float meanv[n];
+    float varv[n];
     for (i = 0; i < n; i++) {
-        meanv[i] = 0.094278;
+        float EY = 1.06 + 0.1*(pow(i, 1.1) / (n-1));
+        float VarY = pow(0.05 + 0.45*(pow(i, 1.15) / (n-1)), 2);
+
+        varv[i] = log(1 + (VarY / pow(EY,2)));
+        meanv[i] = log(EY) - (varv[i] / 2);
+
+        // meanv[i] = 0.057157648387530194;
+        // varv[i] = 0.0022225194728912752;
     }
 
     // float varv[n];
@@ -170,7 +178,7 @@ double* generate_random_constraints(char* seed, int N, int n, double* R)
         for (j = 0; j < n; j++)
         {
             if (i == j) {
-                covm[i+j*n] = 0.002064;
+                covm[i+j*n] = varv[i];
             }
             else{
                 covm[i+j*n] = 0;
