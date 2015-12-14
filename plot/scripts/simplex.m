@@ -1,17 +1,19 @@
 % M = # of macroreplications (of the simplex method)
-M = 20;
+M = 50;
+
+num_constr = [250, 500, 1000, 2500, 5000]; % # constraints
+num_settings = length(num_constr);
 
 % Read in the data from a text file "simplex_data.txt"
-sizedata = [3, M*5];
-fileID = fopen('simplex_data.txt','r');
+sizedata = [3, M*num_settings];
+fileID = fopen('../raw/simplex_data.txt','r');
 formatSpec = '%f %f %f';
 data = fscanf(fileID,formatSpec,sizedata);
 fclose(fileID);
 
 % Assume the data is sitting in a matrix with columns:
 %  # constraints | simplex time (sec) | dual simplex times (sec)
-num_constr = [250, 500, 1000, 2500, 5000]; % # constraints
-num_settings = length(num_constr)
+
 
 avg_simp_times = zeros(num_settings,1);
 avg_dual_simp_times = zeros(num_settings,1);
