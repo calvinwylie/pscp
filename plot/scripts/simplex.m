@@ -24,7 +24,10 @@ for i = 1:num_settings;
 end
 
 % Make of a plot of the performance of the two methods (as # constraints increases)
-plot(num_constr, avg_simp_times, num_constr, avg_dual_simp_times);
+plot(num_constr, avg_simp_times,  'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 2);
+hold on
+plot(num_constr, avg_dual_simp_times, 'g-o','LineWidth', 2, 'MarkerFaceColor', 'g', 'MarkerSize', 2);
+hold off
 legend('Simplex','Dual Simplex');
 xlabel('Number of Constraints')
 ylabel('Wall Clock Time (sec)')
