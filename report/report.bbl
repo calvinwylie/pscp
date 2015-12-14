@@ -1,5 +1,9 @@
 \begin{thebibliography}{1}
 
+\bibitem{bental09}
+{\sc A.~Ben-Tal, L.~El~Ghaoui, and A.~Nemirovski}, {\em Robust optimization},
+  Princeton University Press, 2009.
+
 \bibitem{campi05}
 {\sc G.~Calafiore and M.~C. Campi}, {\em Uncertain convex programs: randomized
   solutions and confidence levels}, Mathematical Programming, 102 (2005),
