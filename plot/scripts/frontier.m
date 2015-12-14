@@ -1,5 +1,5 @@
 % M = # of macroreplications (of the PSCP procedure)
-M = 50;
+M = 400;
 
 num_proc = [1, 2, 4, 8, 16];
 num_settings = length(num_proc);
@@ -9,7 +9,7 @@ num_assets = 200; % num_assets = length(y*)
 
 % Read in the data from a text file "frontier_data.txt"
 sizedata = [3+num_assets, M*num_settings];
-fileID = fopen('../raw/frontier_data.txt','r');
+fileID = fopen('../raw/frontier_data2.txt','r');
 formatSpec = '%f';
 data = fscanf(fileID,formatSpec, sizedata);
 fclose(fileID);
@@ -110,6 +110,17 @@ upperbound = zeros(1,num_settings);
 lower_CI_viol_prob_gr_eps = zeros(1,num_settings);
 upper_CI_viol_prob_gr_eps = zeros(1,num_settings);
 
+meanv = zeros(1,num_assets-1);
+varv = zeros(1,num_assets-1);
+for i = 0:num_assets-2
+    EY = 1.06 + 0.1*(i^1.1 / (num_assets-1));
+    VarY = (0.05 + 0.45*(i^1.15 / (num_assets-1)))^2;
+
+    varv(i+1) = log(1 + (VarY / EY^2));
+    meanv(i+1) = log(EY) - (varv(i+1) / 2);
+end
+    
+
 for i = 1:num_settings
 
 	% Suppose we extract all of the y* and t* into a matrix "solns"
@@ -123,6 +134,7 @@ for i = 1:num_settings
 	% Need to further vectorize
 	est_viol_prob = zeros(1,M);
 	viol_prob_gr_eps = zeros(1,M);
+    
 	for m = 1:M
 		ystar = solns(m,1:num_assets);
 		%tstar = solns(m,num_assets+1);
@@ -130,8 +142,13 @@ for i = 1:num_settings
 
 		% Generate a random set of R realizations
 		%realizations = rand(num_assets,R);
-		realizations = lognrnd(0.094278,sqrt(0.002064),num_assets-1,R);
-        realizations = [realizations; 1.05*ones(1,R)];
+        realizations = zeros(num_assets,R);
+        for k = 1:R
+            realizations(1:num_assets-1,k) = lognrnd(meanv,sqrt(varv));
+            realizations(num_assets,k) = 1.05;
+        end
+% 		realizations = lognrnd(meanv,sqrt(varv),num_assets-1,R);
+%         realizations = [realizations; 1.05*ones(1,R)];
         
 		returns = ystar*realizations;
 		est_viol_prob(m) = (1/R)*sum(returns < tstar);
