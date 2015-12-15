@@ -231,7 +231,7 @@ We guess this is because our sampled constraints are on average very similar to 
 
 \begin{figure}[ht]
 	\centering
-		\includegraphics{../plot/figs/fig_simplex_time.png}
+		\includegraphics[scale=0.9]{../plot/figs/fig_simplex_time.png}
 	\caption{Wall-Clock Times for Simplex and Dual Simplex}
 	\label{fig:fig_simplex_time}
 \end{figure}
@@ -253,7 +253,7 @@ Figure~\ref{fig:wct_numproc} shows this experimentally.
 
 \begin{figure}[ht]
     \centering
-        \includegraphics{../plot/figs/wct_numproc.png}
+        \includegraphics[scale=0.9]{../plot/figs/wct_numproc.png}
     \caption{Wall-Clock Times by Number of Processors}
     \label{fig:wct_numproc}
 \end{figure}
@@ -262,14 +262,15 @@ Figure~\ref{fig:wct_numproc} shows this experimentally.
 \section*{Experiments}
 Let $\tilde{x} = (\tilde{y}, \tilde{t})$ denote the solution returned by running our parallel \ref{scp} procedure.
 Note that even though we know the distribution $\mathbb{P}$, calculating $V(\tilde{x})$ exactly is intractable.
-Instead we resort to estimating via Monte Carlo simulation: sample $R$ i.i.d. realizations of $r$ and calculate
+Instead we resorted to estimating $V(\tilde{x})$ via Monte Carlo simulation.
+We generated $R = 5000$ i.i.d. realizations of the returns $r$ and calculated
 \[ \hat{V}(\tilde{x}) = \frac{1}{R} \sum_{j = 1}^R \mathbf{1}\left\{ \sum_{i=1}^{n-1} r_i^{(j)} \tilde{y}_i + r_n^{(j)} \tilde{y}_n < \tilde{t}\right\}. \]
 
-We then perform $M$ macro-replications of this procedure, with corresponding solutions $\tilde{x}^{(k)}$ for $k = 1, \ldots, M$, and calculate the following point estimates of $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$:
+We performed $M = 400$ macro-replications of this procedure, with corresponding solutions $\tilde{x}^{(k)}$ for $k = 1, \ldots, M$, and calculated the following point estimates of $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$:
 \[ \widehat{\mathbb{E}[V(\tilde{x})]} := \frac{1}{M} \sum_{k=1}^M \hat{V}(\tilde{x}^{(k)}), \]
 and
 \[ \widehat{\mathbb{P}\{V(\tilde{x}) > \epsilon\}} := \frac{1}{M} \sum_{i=1}^M \mathbf{1}\left\{\hat{V}(\tilde{x}) > \epsilon\right\}. \]
-We use exact binomial tests (Clopper-Pearson) to form approximate confidence intervals for these two performance measures.
+We used the Clopper-Pearson exact binomial tests to form approximate confidence intervals for these two performance measures.
 
 When we divided the 5312 constraints evenly among $p$ processors, our estimates for $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$ are shown in Figures~\ref{fig:expviolprob_numproc} and \ref{fig:probviolprobgreateps_numproc}.
 
@@ -289,14 +290,14 @@ When we divided the 5312 constraints evenly among $p$ processors, our estimates 
 
 \begin{figure}[ht]
 	\centering
-		\includegraphics{../plot/figs/expviolprob_numproc.png}
+		\includegraphics[scale=0.9]{../plot/figs/expviolprob_numproc.png}
 	\caption{$\mathbb{E}[V(\tilde{x})]$ by Number of Processors}
 	\label{fig:expviolprob_numproc}
 \end{figure}
 
 \begin{figure}[ht]
 	\centering
-		\includegraphics{../plot/figs/probviolprobgreateps_numproc.png}
+		\includegraphics[scale=0.9]{../plot/figs/probviolprobgreateps_numproc.png}
 	\caption{$\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ by Number of Processors}
 	\label{fig:probviolprobgreateps_numproc}
 \end{figure}
@@ -305,7 +306,7 @@ As can be seen in the Figures, even though at 4 processors and above, the violat
 
 \begin{figure}[ht]
 	\centering
-		\includegraphics{../plot/figs/wct_probviolprobgreateps_frontier.png}
+		\includegraphics[scale=0.9]{../plot/figs/wct_probviolprobgreateps_frontier.png}
 	\caption{Trade-off between Time and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$}
 	\label{fig:wct_probviolprobgreateps_frontier}
 \end{figure}
@@ -325,7 +326,7 @@ In addition, doubling the number of constraints per processor (for $p =4$, 8, an
 
 \begin{figure}[ht]
 	\centering
-		\includegraphics{../plot/figs/wct_numconstraint.png}
+		\includegraphics[scale=0.9]{../plot/figs/wct_numconstraint.png}
 	\caption{Wall-Clock Times by Number of Constraints/Processor}
 	\label{fig:wct_numconstraint}
 \end{figure}
@@ -337,14 +338,14 @@ It was appears that doubling the number of constraints per processor is enough f
 
 \begin{figure}[ht]
 	\centering
-		\includegraphics{../plot/figs/expviolprob_numconstraint.png}
+		\includegraphics[scale=0.9]{../plot/figs/expviolprob_numconstraint.png}
 	\caption{$\mathbb{E}[V(\tilde{x})]$ by Number of Constraints/Processor}
 	\label{fig:expviolprob_numconstraint}
 \end{figure}
 
 \begin{figure}[ht]
 	\centering
-		\includegraphics{../plot/figs/probviolprobgreateps_numconstraint.png}
+		\includegraphics[scale=0.9]{../plot/figs/probviolprobgreateps_numconstraint.png}
 	\caption{$\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ by Number of Constraints/Processor}
 	\label{fig:probviolprobgreateps_numconstraint}
 \end{figure}
@@ -356,12 +357,17 @@ Based on this plot, an ``optimal'' number of configuration appears to be 8 proce
 
 \begin{figure}[ht]
 	\centering
-		\includegraphics{../plot/figs/wct_probviolprobgreateps_frontier_constraint.png}
+		\includegraphics[scale=0.9]{../plot/figs/wct_probviolprobgreateps_frontier_constraint.png}
 	\caption{Trade-off between Time and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$}
 	\label{fig:wct_probviolprobgreateps_frontier_constraint}
 \end{figure}
 
 \section*{Conclusions}
+For a modest-sized portfolio optimization problem, we observed that parallelism can dramatically reduce the run time with some loss in \ref{ccp} feasibility.
+We believe that for more complex sampled convex programs (those with more decision variables and constraint or those of harder complexity than linear programs), the benefits of a distributed approach will be even more pronounced.
+In our MPI implementation we observe marginally decreasing gains in run-time performance due to increased communication and the need to solve a larger second-stage problem.
+When we experimented with adjusting the number of constraints per processor, our main conclusion was that one can typically sample twice as much while achieving faster run-times and \ref{ccp} feasibility competitive with the serial solution procedure.
+
 
 \section*{Open Extensions}
 If we had more time, there are a number of avenues we would have wanted to explore:
