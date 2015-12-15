@@ -212,12 +212,7 @@ Thus we should observe a roughly linear speedup when decomposing our sampled pro
 Also given a problem where $m >> n$, it may make sense to solve the dual program instead (which can be done through the so-called Dual Simplex Algorithm), which has only $n$ constraints.
 
 Figure \ref{fig:fig_simplex_time} shows some experimental timings for the simplex and dual simplex methods applied to our problem with $n = 200$ assets.
-<<<<<<< HEAD
-It shows a roughly superlinear increase in wall clock time with respect to the number of constraints.
-=======
-
 It shows the expected linear (in fact superlinear) increase in wall clock time with respect to the number of constraints.
->>>>>>> dc31c281890e84e7fcc83820e377ac9c836611c6
 This trend is promising for us to decompose the \ref{Portfolioscp} into smaller subproblems to achieve time savings through parallelism.
 
 However, we do not realize any speedup through solving the dual program.  
