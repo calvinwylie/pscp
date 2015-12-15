@@ -225,6 +225,27 @@ We guess this is because our sampled constraints are on average very similar to 
 	\label{fig:fig_simplex_time}
 \end{figure}
 
+\section*{Performance Analysis}
+
+The program spends time in two main areas: communicating the constraint data through MPI, and solving the linear programs in GLPK.  
+As these are two mature and heavily optimized libraries, manual performance tuning of the routines called would likely not lead to significant speedups.
+We can however, reason about the overall performance of our program at a high level.
+
+Assuming that the number of constraints is held constant, as Figure~\ref{fig:fig_simplex_time} suggests we should see a linear decrease in the wall-clock time of the simplex algorithm when distributing the constraints across different processors.  
+The time required for the final solve on the master processor (using active constraints) from the subproblems) should be small, as we can warm-start this optimization with an optimal basis from a subproblem.
+
+However, as we increase the number of processors, the time to communicate the initial constraints (through an MPI\_Scatter) and the active constraints (through MPI\_Gather) will increase.
+Through profiling, we verified that there is a roughly $O(p^2)$ relationship between communication time and the number of processors $p$.
+
+This suggests that we should initially see decreases in wall-clock time as we add processors, but at some point the communication time will start to dominate the savings gained by splitting our problem.  Figure~\ref{fig:wct_numproc} shows this experimentally. 
+
+\begin{figure}[ht]
+    \centering
+        \includegraphics{../plot/figs/wct_numproc.png}
+    \caption{Wall-Clock Times by Number of Processors}
+    \label{fig:wct_numproc}
+\end{figure}
+
 
 \section*{Experiments}
 Let $\tilde{x} = (\tilde{y}, \tilde{t})$ denote the solution returned by running our parallel \ref{scp} procedure.
@@ -238,19 +259,19 @@ and
 \[ \widehat{\mathbb{P}\{V(\tilde{x}) > \epsilon\}} := \frac{1}{M} \sum_{i=1}^M \mathbf{1}\left\{\hat{V}(\tilde{x}) > \epsilon\right\}. \]
 We use exact binomial tests (Clopper-Pearson) to form approximate confidence intervals for these two performance measures.
 
-\begin{figure}[ht]
-	\centering
-		\includegraphics{../plot/figs/objfnval_num_proc.png}
-	\caption{VaR $\tilde{t}$ by Number of Processors}
-	\label{fig:objfnval_num_proc}
-\end{figure}
-
-\begin{figure}[ht]
-	\centering
-		\includegraphics{../plot/figs/wct_objfnval_frontier.png}
-	\caption{Trade-off between Time and VaR $\tilde{t}$}
-	\label{fig:wct_objfnval_frontier}
-\end{figure}
+%\begin{figure}[ht]
+	%\centering
+		%\includegraphics{../plot/figs/objfnval_num_proc.png}
+	%\caption{VaR $\tilde{t}$ by Number of Processors}
+	%\label{fig:objfnval_num_proc}
+%\end{figure}
+%
+%\begin{figure}[ht]
+	%\centering
+		%\includegraphics{../plot/figs/wct_objfnval_frontier.png}
+	%\caption{Trade-off between Time and VaR $\tilde{t}$}
+	%\label{fig:wct_objfnval_frontier}
+%\end{figure}
 
 \begin{figure}[ht]
 	\centering
@@ -272,6 +293,8 @@ We use exact binomial tests (Clopper-Pearson) to form approximate confidence int
 	\caption{Trade-off between Time and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$}
 	\label{fig:wct_probviolprobgreateps_frontier}
 \end{figure}
+
+\section*{Further Experiments}
 
 \begin{figure}[ht]
 	\centering
@@ -299,29 +322,6 @@ We use exact binomial tests (Clopper-Pearson) to form approximate confidence int
 		\includegraphics{../plot/figs/wct_probviolprobgreateps_frontier_constraint.png}
 	\caption{Trade-off between Time and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$}
 	\label{fig:wct_probviolprobgreateps_frontier_constraint}
-\end{figure}
-
-
-Sensitivity analysis (maybe).
-\section*{Performance Analysis}
-
-The program spends time in two main areas: communicating the constraint data through MPI, and solving the linear programs in GLPK.  
-As these are two mature and heavily optimized libraries, manual performance tuning of the routines called would likely not lead to significant speedups.
-We can however, reason about the overall performance of our program at a high level.
-
-Assuming that the number of contraints is held constant, as Figure~\ref{fig:fig_simplex_time} suggests we should see a linear decrease in the wall-clock time of the simplex algorithm when distributing the constraints across different processors.  
-The time required for the final solve on the master processor (using active contraints) from the subproblems) should be small, as we can warm-start this optimization with an optimal basis from a subproblem.
-
-However, as we increase the number of processors, the time to communicate the initial constraints (through an MPI\_Scatter) and the active constraints (through MPI\_Gather) will increase.
-Through profiling, we verified that there is a roughly $O(p^2)$ relationship between communication time and the number of processors $p$.
-
-This suggests that we should initially see decreases in wall-clock time as we add processors, but at some point the communication time will start to dominate the savings gained by splitting our problem.  Figure~\ref{fig:wct_numproc} shows this experimentally. 
-
-\begin{figure}[ht]
-    \centering
-        \includegraphics{../plot/figs/wct_numproc.png}
-    \caption{Wall-Clock Times by Number of Processors}
-    \label{fig:wct_numproc}
 \end{figure}
 
 \section*{Conclusions}
