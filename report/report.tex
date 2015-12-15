@@ -208,7 +208,7 @@ We use MPI for communication across processors and glpk as our simplex solver.
 
 
 Figure \ref{fig:fig_simplex_time} shows some experimental timings for the simplex and dual simplex methods applied to our problem with $n = 200$ assets.
-It shows a superlinear increase in wall clock time with respect to the number of constraints.
+It shows a roughly superlinear increase in wall clock time with respect to the number of constraints.
 This trend is promising for us to decompose the \ref{Portfolioscp} into smaller subproblems to achieve time savings through parallelism.
 
 \begin{figure}[ht]
@@ -270,7 +270,35 @@ We use exact binomial tests (Clopper-Pearson) to form approximate confidence int
 	\centering
 		\includegraphics{../plot/figs/wct_probviolprobgreateps_frontier.png}
 	\caption{Trade-off between Time and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$}
-	\label{fig:fig_simplex_time}
+	\label{fig:wct_probviolprobgreateps_frontier}
+\end{figure}
+
+\begin{figure}[ht]
+	\centering
+		\includegraphics{../plot/figs/wct_numconstraint.png}
+	\caption{Wall-Clock Times by Number of Constraints/Processor}
+	\label{fig:wct_numconstraint}
+\end{figure}
+
+\begin{figure}[ht]
+	\centering
+		\includegraphics{../plot/figs/expviolprob_numconstraint.png}
+	\caption{$\mathbb{E}[V(\tilde{x})]$ by Number of Constraints/Processor}
+	\label{fig:expviolprob_numconstraint}
+\end{figure}
+
+\begin{figure}[ht]
+	\centering
+		\includegraphics{../plot/figs/probviolprobgreateps_numconstraint.png}
+	\caption{$\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ by Number of Constraints/Processor}
+	\label{fig:probviolprobgreateps_numconstraint}
+\end{figure}
+
+\begin{figure}[ht]
+	\centering
+		\includegraphics{../plot/figs/wct_probviolprobgreateps_frontier_constraint.png}
+	\caption{Trade-off between Time and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$}
+	\label{fig:wct_probviolprobgreateps_frontier_constraint}
 \end{figure}
 
 
@@ -279,7 +307,14 @@ Sensitivity analysis (maybe).
 
 \section*{Conclusions}
 
-
+\section*{Open Extensions}
+If we had more time, there are a number of avenues we would have wanted to explore:
+\begin{itemize}
+\item Experiment on an actual financial data set with forecasts for asset returns.
+\item Compare the quality of the solution returned by our procedure with other solutions found by solving over convex inner approximations of the \ref{ccp} feasible region.
+\item Extend our procedure to run multiple iterations of the worker $\to$ master sequence in hopes of better recovering the optimal active constraints.
+\item Test for large problem sizes and other problems whose solution methods are of harder complexity than linear programming.
+\end{itemize}
 
 %We intend to conduct experiments on the performance of the parallel procedure versus the traditional serial \ref{scp} procedure.
 %For measures of performance of the solutions $x^*$ and $x^{**}$, we will look at the objective function values, the expected violation probabilities, and the probabilities that the violations probabilities are greater than $\epsilon$.

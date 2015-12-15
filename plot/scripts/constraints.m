@@ -193,11 +193,11 @@ end
 figure
 hold on
 
-plot(log2(num_constraints(1)), avg_viol_prob(1), 'k-o','LineWidth', 2, 'MarkerFaceColor', 'k', 'MarkerSize', 2);
-plot(log2(num_constraints(2:3)), avg_viol_prob(2:3), 'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 2);
-plot(log2(num_constraints(4:6)), avg_viol_prob(4:6), 'g-o','LineWidth', 2, 'MarkerFaceColor', 'g', 'MarkerSize', 2);
-plot(log2(num_constraints(7:9)), avg_viol_prob(7:9), 'r-o','LineWidth', 2, 'MarkerFaceColor', 'r', 'MarkerSize', 2);
-plot(log2(num_constraints(10:12)), avg_viol_prob(10:12), 'm-o','LineWidth', 2, 'MarkerFaceColor', 'm', 'MarkerSize', 2);
+plot(log2(num_constraints(1)), avg_viol_prob(1), 'k-o','LineWidth', 2, 'MarkerFaceColor', 'k', 'MarkerSize', 5);
+plot(log2(num_constraints(2:3)), avg_viol_prob(2:3), 'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 5);
+plot(log2(num_constraints(4:6)), avg_viol_prob(4:6), 'g-o','LineWidth', 2, 'MarkerFaceColor', 'g', 'MarkerSize', 5);
+plot(log2(num_constraints(7:9)), avg_viol_prob(7:9), 'r-o','LineWidth', 2, 'MarkerFaceColor', 'r', 'MarkerSize', 5);
+plot(log2(num_constraints(10:12)), avg_viol_prob(10:12), 'm-o','LineWidth', 2, 'MarkerFaceColor', 'm', 'MarkerSize', 5);
 
 % errorbar(log2(num_constraints(1)), avg_viol_prob(1), lower_CI_est_viol_prob(1), upper_CI_est_viol_prob(1), 'k-o','LineWidth', 2, 'MarkerFaceColor', 'k', 'MarkerSize', 2);
 % errorbar(log2(num_constraints(2:3)), avg_viol_prob(2:3), lower_CI_est_viol_prob(2:3), upper_CI_est_viol_prob(2:3), 'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 2);
@@ -234,11 +234,11 @@ hold on
 
 
 
-errorbar(log2(num_constraints(1)), avg_prob_viol_prob_gr_eps(1), lower_CI_viol_prob_gr_eps(1), upper_CI_viol_prob_gr_eps(1), 'k-o','LineWidth', 2, 'MarkerFaceColor', 'k', 'MarkerSize', 2);
-errorbar(log2(num_constraints(2:3)), avg_prob_viol_prob_gr_eps(2:3), lower_CI_viol_prob_gr_eps(2:3), upper_CI_viol_prob_gr_eps(2:3), 'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 2);
-errorbar(log2(num_constraints(4:6)), avg_prob_viol_prob_gr_eps(4:6), lower_CI_viol_prob_gr_eps(4:6), upper_CI_viol_prob_gr_eps(4:6), 'g-o','LineWidth', 2, 'MarkerFaceColor', 'g', 'MarkerSize', 2);
-errorbar(log2(num_constraints(7:9)), avg_prob_viol_prob_gr_eps(7:9), lower_CI_viol_prob_gr_eps(7:9), upper_CI_viol_prob_gr_eps(7:9), 'r-o','LineWidth', 2, 'MarkerFaceColor', 'r', 'MarkerSize', 2);
-errorbar(log2(num_constraints(10:12)), avg_prob_viol_prob_gr_eps(10:12), lower_CI_viol_prob_gr_eps(10:12), upper_CI_viol_prob_gr_eps(10:12), 'm-o','LineWidth', 2, 'MarkerFaceColor', 'm', 'MarkerSize', 2);
+errorbar(log2(num_constraints(1)), avg_prob_viol_prob_gr_eps(1), lower_CI_viol_prob_gr_eps(1), upper_CI_viol_prob_gr_eps(1), 'k-o','LineWidth', 2, 'MarkerFaceColor', 'k', 'MarkerSize', 5);
+errorbar(log2(num_constraints(2:3)), avg_prob_viol_prob_gr_eps(2:3), lower_CI_viol_prob_gr_eps(2:3), upper_CI_viol_prob_gr_eps(2:3), 'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 5);
+errorbar(log2(num_constraints(4:6)), avg_prob_viol_prob_gr_eps(4:6), lower_CI_viol_prob_gr_eps(4:6), upper_CI_viol_prob_gr_eps(4:6), 'g-o','LineWidth', 2, 'MarkerFaceColor', 'g', 'MarkerSize', 5);
+errorbar(log2(num_constraints(7:9)), avg_prob_viol_prob_gr_eps(7:9), lower_CI_viol_prob_gr_eps(7:9), upper_CI_viol_prob_gr_eps(7:9), 'r-o','LineWidth', 2, 'MarkerFaceColor', 'r', 'MarkerSize', 5);
+errorbar(log2(num_constraints(10:12)), avg_prob_viol_prob_gr_eps(10:12), lower_CI_viol_prob_gr_eps(10:12), upper_CI_viol_prob_gr_eps(10:12), 'm-o','LineWidth', 2, 'MarkerFaceColor', 'm', 'MarkerSize', 5);
 
 hold off
 
@@ -292,7 +292,11 @@ plot(avg_times(2:3), avg_prob_viol_prob_gr_eps(2:3),'b-o','LineWidth', 2, 'Marke
 plot(avg_times(4:6), avg_prob_viol_prob_gr_eps(4:6),'g-o','LineWidth', 2, 'MarkerFaceColor', 'g', 'MarkerSize', 5);
 plot(avg_times(7:9), avg_prob_viol_prob_gr_eps(7:9),'r-o','LineWidth', 2, 'MarkerFaceColor', 'r', 'MarkerSize', 5);
 plot(avg_times(10:12), avg_prob_viol_prob_gr_eps(10:12),'m-o','LineWidth', 2, 'MarkerFaceColor', 'm', 'MarkerSize', 5);
-%text(avg_times(2:num_settings)+0.07, avg_prob_viol_prob_gr_eps(2:num_settings)+0.01, {'2','4','8','16'});
+
+text(avg_times(2)-0.35, avg_prob_viol_prob_gr_eps(2)+0.02, {'2656'});
+text(avg_times(4)-0.35, avg_prob_viol_prob_gr_eps(4)+0.02, {'1328'});
+text(avg_times(7)-0.3, avg_prob_viol_prob_gr_eps(7)+0.02, {'664'});
+text(avg_times(10)-0.3, avg_prob_viol_prob_gr_eps(10)+0.02, {'332'});
 hold off
 
 legend('p=1','p=2','p=4','p=8','p=16');
