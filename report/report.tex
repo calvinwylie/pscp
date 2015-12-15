@@ -6,6 +6,7 @@
 \usepackage{amssymb}
 \usepackage{multicol}
 \usepackage{graphicx}
+\usepackage{url}
 
 \title{Distributed Sampled Convex Problems}
 \author{David Eckman (dje88) and Calvin Wylie (cjw278)}
@@ -18,13 +19,14 @@
 
 \maketitle
 
-\section*{Abstract}
+\begin{abstract}
 It is well-known that chance constrained programs are in general intractable because of the non-convexity of the feasible region and the requirement of prior information about the distribution of the uncertain parameters.
 Solving a sampled convex program allows for finding solutions that are feasible for the chance constrained program with high probability with known bounds on the required number of samples.
 Sampled convex problems are more easily solved because they are characterized by a finite number of constraints and require only that one can obtain i.i.d. samples of the uncertain parameters.
 However, the required number of samples may still result in a sampled convex program that is expensive to solve exactly.
 We consider obtaining approximate solutions to these sampled convex programs by distributing the constraints across processors and solving smaller subproblems followed by a consensus on the active constraints.
 We consider a classical portfolio-optimization problem and study the trade-offs that arise from this method: including wall-clock time, violation probability, and feasibility probability.
+\end{abstract}
 
 \section*{Introduction}
 Chance constrained problems model many real-word applications in areas as diverse as finance, energy, and emergency services \cite{bental09}.
@@ -146,11 +148,6 @@ Another way to view the problem is to assume with are willing to commit to the w
 But instead of solving \ref{scp} we want to use the time to take more than $N$ samples and apply the distributed procedure.
 Using that time, what is the best number of processors to use and number of constraints to give to each processor and is the performance of the distributed procedure competitive with simply solving \ref{scp}.
 
-Another possible direction to look is to take $\tilde{x}$ as some convex combination of the
-optimals solutions from the subproblems.  Intuitively, if each of the subproblems somehow
-approximate \ref{ccp}, then somehow ``averaging'' them should give us at least something
-no worse.
-
 \section*{Example Problem}
 
 We consider the classical portfolio optimization problem of selecting an allocation $y$ for investing one dollar over $n$ assets with uncertain returns $r_i$ for $i = 1, \ldots, n$.
@@ -204,12 +201,27 @@ Here we take $\epsilon = 0.05$ and $\beta = 1 \times 10^{-5}$ to get a required 
 
 \section*{Implementation in MPI}
 
-We use MPI for communication across processors and glpk as our simplex solver.
+To solve our example portfolio optimization problem, we implemented a C interface to solve linear programs in paralell using the GNU Linear Programming Kit (GLPK) \footnote{\url{https://www.gnu.org/software/glpk/}}.
+We chose to use the Simplex algorithm to solve our linear programs.  
+As our contraints are very dense, interior point methods would be likely be very slow.
+To provide paralellism, we coded to the Message Passing Interface (MPI) standard.
+The code was compiled with the Intel C compiler (icc), and experiments performed on a single 12-core Intel Xeon E5-2620 v3 processor.
 
+Given a linear program with $m$ contraints and $n$ variables, the folklore on the simplex method is that it takes $O(m)$ pivots to reach the optimal solution in the average case (the worst case is always $2^n - 1$).
+Thus we should observe a roughly linear speedup when decomposing our sampled program into smaller subproblems.
+Also given a problem where $m >> n$, it may make sense to solve the dual program instead (which can be done through the so-called Dual Simplex Algorithm), which has only $n$ constraints.
 
 Figure \ref{fig:fig_simplex_time} shows some experimental timings for the simplex and dual simplex methods applied to our problem with $n = 200$ assets.
+<<<<<<< HEAD
 It shows a roughly superlinear increase in wall clock time with respect to the number of constraints.
+=======
+
+It shows the expected linear (in fact superlinear) increase in wall clock time with respect to the number of constraints.
+>>>>>>> dc31c281890e84e7fcc83820e377ac9c836611c6
 This trend is promising for us to decompose the \ref{Portfolioscp} into smaller subproblems to achieve time savings through parallelism.
+
+However, we do not realize any speedup through solving the dual program.  
+We guess this is because our sampled constraints are on average very similar to each other, and thus not as many pivots are needed to reach an optimal extreme point as would be required in a more ``standard'' linear program.
 
 \begin{figure}[ht]
 	\centering
@@ -230,13 +242,6 @@ We then $M$ macro-replications of the procedure, with corresponding solutions $\
 and
 \[ \widehat{\mathbb{P}\{V(\tilde{x}) > \epsilon\}} := \frac{1}{M} \sum_{i=1}^M \mathbf{1}\left\{\hat{V}(\tilde{x}) > \epsilon\right\}. \]
 We use exact binomial tests (Clopper-Pearson) to form approximate confidence intervals for these two performance measures.
-
-\begin{figure}[ht]
-	\centering
-		\includegraphics{../plot/figs/wct_numproc.png}
-	\caption{Wall-Clock Times by Number of Processors}
-	\label{fig:wct_numproc}
-\end{figure}
 
 \begin{figure}[ht]
 	\centering
@@ -304,6 +309,25 @@ We use exact binomial tests (Clopper-Pearson) to form approximate confidence int
 
 Sensitivity analysis (maybe).
 \section*{Performance Analysis}
+
+The program spends time in two main areas: communicating the constraint data through MPI, and solving the linear programs in GLPK.  
+As these are two mature and heavily optimized libraries, manual performance tuning of the routines called would likely not lead to significant speedups.
+We can however, reason about the overall performance of our program at a high level.
+
+Assuming that the number of contraints is held constant, as Figure~\ref{fig:fig_simplex_time} suggests we should see a linear decrease in the wall-clock time of the simplex algorithm when distributing the constraints across different processors.  
+The time required for the final solve on the master processor (using active contraints) from the subproblems) should be small, as we can warm-start this optimization with an optimal basis from a subproblem.
+
+However, as we increase the number of processors, the time to communicate the initial constraints (through an MPI\_Scatter) and the active constraints (through MPI\_Gather) will increase.
+Through profiling, we verified that there is a roughly $O(p^2)$ relationship between communication time and the number of processors $p$.
+
+This suggests that we should initially see decreases in wall-clock time as we add processors, but at some point the communication time will start to dominate the savings gained by splitting our problem.  Figure~\ref{fig:wct_numproc} shows this experimentally. 
+
+\begin{figure}[ht]
+    \centering
+        \includegraphics{../plot/figs/wct_numproc.png}
+    \caption{Wall-Clock Times by Number of Processors}
+    \label{fig:wct_numproc}
+\end{figure}
 
 \section*{Conclusions}
 
