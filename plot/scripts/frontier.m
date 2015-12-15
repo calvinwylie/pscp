@@ -1,5 +1,5 @@
 % M = # of macroreplications (of the PSCP procedure)
-M = 50;
+M = 400;
 
 num_proc = [1, 2, 4, 8, 16];
 num_settings = length(num_proc);
@@ -9,7 +9,7 @@ num_assets = 200; % num_assets = length(y*)
 
 % Read in the data from a text file "frontier_data.txt"
 sizedata = [3+num_assets, M*num_settings];
-fileID = fopen('../raw/frontier_data.txt','r');
+fileID = fopen('../raw/frontier_data2.txt','r');
 formatSpec = '%f';
 data = fscanf(fileID,formatSpec, sizedata);
 fclose(fileID);
@@ -42,14 +42,14 @@ avg_times = mean(times);
 % upper_CI_times = z_alpha_over_2*(var_times/sqrt(M));
 
 figure
-plot(log2(num_proc), avg_times);
+plot(log2(num_proc), avg_times, 'b-o', 'LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 5);
 %errorbar(log2(num_proc), avg_times, lower_CI_times, upper_CI_times);
 xlabel('Number of Processors')
 ylabel('Wall Clock Time (sec)')
 title('Wall Clock Time vs No. of Processors')
 
 V = axis;
-V(1:2) = [-0.5, 4.5];
+V(1:3) = [-0.5, 4.5, 0];
 axis(V);
 
 xticks = 0:4;
@@ -71,16 +71,18 @@ lower_CI_objfnvalues = z_alpha_over_2*(var_objfnvalues/sqrt(M));
 upper_CI_objfnvalues = z_alpha_over_2*(var_objfnvalues/sqrt(M));
 
 figure
-errorbar(log2(num_proc(2:num_settings)), avg_objfnvalues(2:num_settings), lower_CI_objfnvalues(2:num_settings), upper_CI_objfnvalues(2:num_settings));
+plot(log2(num_proc(2:num_settings)), avg_objfnvalues(2:num_settings),'b-o', 'LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 5);
+%errorbar(log2(num_proc(2:num_settings)), avg_objfnvalues(2:num_settings), lower_CI_objfnvalues(2:num_settings), upper_CI_objfnvalues(2:num_settings));
 hold on
-plot([1,4], [avg_objfnvalues(1),avg_objfnvalues(1)]);
-plot([1,4], [avg_objfnvalues(1)-lower_CI_objfnvalues(1),avg_objfnvalues(1)-lower_CI_objfnvalues(1)],'b:');
-plot([1,4], [avg_objfnvalues(1)+upper_CI_objfnvalues(1),avg_objfnvalues(1)+upper_CI_objfnvalues(1)],'b:');
+plot([1,4], [avg_objfnvalues(1),avg_objfnvalues(1)], 'k-', 'LineWidth', 2);
+%plot([1,4], [avg_objfnvalues(1)-lower_CI_objfnvalues(1),avg_objfnvalues(1)-lower_CI_objfnvalues(1)],'b:');
+%plot([1,4], [avg_objfnvalues(1)+upper_CI_objfnvalues(1),avg_objfnvalues(1)+upper_CI_objfnvalues(1)],'b:');
 hold off
 
+legend('Distributed','Original')
 xlabel('Number of Processors')
-ylabel('Obj. Function Value')
-title('Obj. Function Value vs No. of Processors')
+ylabel('Value at Risk t')
+title('Value at Risk vs No. of Processors')
 
 V = axis;
 V(1:2) = [0.5, 4.5];
@@ -94,11 +96,21 @@ set(gca, 'XTickLabel', xtl)
 %%
 % Make plot of obj fn value/wall clock time tradeoff
 figure
-plot(avg_times, avg_objfnvalues);
-text(avg_times, avg_objfnvalues, {'1','2','4','8','16'});
+
+plot(avg_times(1), avg_objfnvalues(1),'k-o', 'MarkerFaceColor', 'k', 'MarkerSize', 5);
+hold on
+plot(avg_times(2:num_settings), avg_objfnvalues(2:num_settings),'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 5);
+text(avg_times(2:num_settings)+0.05, avg_objfnvalues(2:num_settings)+0.00005, {'2','4','8','16'});
+hold off
+
+legend('Original','Distributed')
 xlabel('Avg Wall Clock Time (sec)');
-ylabel('Avg Obj. Function Value');
-title('Wall Clock Time / Obj. Function Value Tradeoff');
+ylabel('Avg Value at Risk t');
+title('Wall Clock Time / Value at Risk Tradeoff');
+
+V = axis;
+V(1) = 0;
+axis(V);
 
 %%
 avg_viol_prob = zeros(1,num_settings);
@@ -109,6 +121,17 @@ lowerbound = zeros(1,num_settings);
 upperbound = zeros(1,num_settings);
 lower_CI_viol_prob_gr_eps = zeros(1,num_settings);
 upper_CI_viol_prob_gr_eps = zeros(1,num_settings);
+
+meanv = zeros(1,num_assets-1);
+varv = zeros(1,num_assets-1);
+for i = 0:num_assets-2
+    EY = 1.06 + 0.1*(i^1.1 / (num_assets-1));
+    VarY = (0.05 + 0.45*(i^1.15 / (num_assets-1)))^2;
+
+    varv(i+1) = log(1 + (VarY / EY^2));
+    meanv(i+1) = log(EY) - (varv(i+1) / 2);
+end
+    
 
 for i = 1:num_settings
 
@@ -123,6 +146,7 @@ for i = 1:num_settings
 	% Need to further vectorize
 	est_viol_prob = zeros(1,M);
 	viol_prob_gr_eps = zeros(1,M);
+    
 	for m = 1:M
 		ystar = solns(m,1:num_assets);
 		%tstar = solns(m,num_assets+1);
@@ -130,8 +154,13 @@ for i = 1:num_settings
 
 		% Generate a random set of R realizations
 		%realizations = rand(num_assets,R);
-		realizations = lognrnd(0.094278,sqrt(0.002064),num_assets-1,R);
-        realizations = [realizations; 1.05*ones(1,R)];
+        realizations = zeros(num_assets,R);
+        for k = 1:R
+            realizations(1:num_assets-1,k) = lognrnd(meanv,sqrt(varv));
+            realizations(num_assets,k) = 1.05;
+        end
+% 		realizations = lognrnd(meanv,sqrt(varv),num_assets-1,R);
+%         realizations = [realizations; 1.05*ones(1,R)];
         
 		returns = ystar*realizations;
 		est_viol_prob(m) = (1/R)*sum(returns < tstar);
@@ -162,17 +191,19 @@ end
 %%
 % Make plot of violation probability vs number of processors
 figure
-errorbar(log2(num_proc(2:num_settings)), avg_viol_prob(2:num_settings), lower_CI_est_viol_prob(2:num_settings), upper_CI_est_viol_prob(2:num_settings));
+errorbar(log2(num_proc(2:num_settings)), avg_viol_prob(2:num_settings), lower_CI_est_viol_prob(2:num_settings), upper_CI_est_viol_prob(2:num_settings), 'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 2);
 %errorbar(1, avg_viol_prob, lower_CI_est_viol_prob, upper_CI_est_viol_prob);
 xlabel('Number of Processors')
-ylabel('E(V(x^*))')
-title('E(V(x^*)) vs No. of Processors')
+ylabel('E[V(x)]')
+title('E[V(x)] vs No. of Processors')
 
 hold on
-plot([0.5,4.5], [avg_viol_prob(1),avg_viol_prob(1)],'k');
-plot([0.5,4.5], [avg_viol_prob(1)-lower_CI_est_viol_prob(1),avg_viol_prob(1)-lower_CI_est_viol_prob(1)],'k:');
-plot([0.5,4.5], [avg_viol_prob(1)+upper_CI_est_viol_prob(1),avg_viol_prob(1)+upper_CI_est_viol_prob(1)],'k:');
+plot([0.5,4.5], [avg_viol_prob(1),avg_viol_prob(1)],'k-','LineWidth', 2);
+plot([0.5,4.5], [avg_viol_prob(1)-lower_CI_est_viol_prob(1),avg_viol_prob(1)-lower_CI_est_viol_prob(1)], 'k:','LineWidth', 2);
+plot([0.5,4.5], [avg_viol_prob(1)+upper_CI_est_viol_prob(1),avg_viol_prob(1)+upper_CI_est_viol_prob(1)], 'k:','LineWidth', 2);
 hold off
+
+legend('Distributed','Original')
 
 V = axis;
 V(1:2) = [0.5, 4.5];
@@ -186,17 +217,19 @@ set(gca, 'XTickLabel', xtl)
 %%
 % Make plot of prob viol prob > epsilon vs number of processors
 figure
-errorbar(log2(num_proc(2:num_settings)), avg_prob_viol_prob_gr_eps(2:num_settings), lower_CI_viol_prob_gr_eps(2:num_settings), upper_CI_viol_prob_gr_eps(2:num_settings));
+errorbar(log2(num_proc(2:num_settings)), avg_prob_viol_prob_gr_eps(2:num_settings), lower_CI_viol_prob_gr_eps(2:num_settings), upper_CI_viol_prob_gr_eps(2:num_settings), 'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 2);
 %errorbar(1, avg_prob_viol_prob_gr_eps, lower_CI_viol_prob_gr_eps, upper_CI_viol_prob_gr_eps);
 xlabel('Number of Processors')
-ylabel('Pr(V(x^*) > \epsilon)')
-title('Pr(V(x^*) > \epsilon) vs No. of Processors')
+ylabel('Pr\{V(x) > \epsilon\}')
+title('Pr\{V(x) > \epsilon\} vs No. of Processors')
 
 hold on
-plot([0.5,4.5], [avg_prob_viol_prob_gr_eps(1),avg_prob_viol_prob_gr_eps(1)],'k');
-plot([0.5,4.5], [avg_prob_viol_prob_gr_eps(1)-lower_CI_viol_prob_gr_eps(1),avg_prob_viol_prob_gr_eps(1)-lower_CI_viol_prob_gr_eps(1)],'k:');
-plot([0.5,4.5], [avg_prob_viol_prob_gr_eps(1)+upper_CI_viol_prob_gr_eps(1),avg_prob_viol_prob_gr_eps(1)+upper_CI_viol_prob_gr_eps(1)],'k:');
+plot([0.5,4.5], [avg_prob_viol_prob_gr_eps(1),avg_prob_viol_prob_gr_eps(1)],'k-','LineWidth', 2);
+%plot([0.5,4.5], [avg_prob_viol_prob_gr_eps(1)-lower_CI_viol_prob_gr_eps(1),avg_prob_viol_prob_gr_eps(1)-lower_CI_viol_prob_gr_eps(1)],'k:','LineWidth', 2);
+plot([0.5,4.5], [avg_prob_viol_prob_gr_eps(1)+upper_CI_viol_prob_gr_eps(1),avg_prob_viol_prob_gr_eps(1)+upper_CI_viol_prob_gr_eps(1)],'k:','LineWidth', 2);
 hold off
+
+legend('Distributed','Original')
 
 V = axis;
 V(1:2) = [0.5, 4.5];
@@ -209,8 +242,18 @@ set(gca, 'XTickLabel', xtl)
 %%
 % Make plot of prob(viol prob > eps)/wall clock time tradeoff
 figure
-plot(avg_times, avg_prob_viol_prob_gr_eps);
-text(avg_times, avg_prob_viol_prob_gr_eps, {'1','2','4','8','16'});
+plot(avg_times(1), avg_prob_viol_prob_gr_eps(1),'k-o', 'MarkerFaceColor', 'k', 'MarkerSize', 5);
+
+hold on
+plot(avg_times(2:num_settings), avg_prob_viol_prob_gr_eps(2:num_settings),'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 5);
+text(avg_times(2:num_settings)+0.07, avg_prob_viol_prob_gr_eps(2:num_settings)+0.01, {'2','4','8','16'});
+hold off
+
+legend('Original','Distributed')
 xlabel('Avg Wall Clock Time');
-ylabel('Pr(V(x^*) > \epsilon)');
-title('Wall Clock Time / Pr(V(x^*) > \epsilon) Tradeoff');
+ylabel('Pr\{V(x) > \epsilon\}');
+title('Wall Clock Time / Pr\{V(x) > \epsilon\} Tradeoff');
+
+V = axis;
+V(1) = 0;
+axis(V);

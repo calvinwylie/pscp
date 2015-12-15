@@ -6,7 +6,7 @@ num_settings = length(num_constr);
 
 % Read in the data from a text file "simplex_data.txt"
 sizedata = [3, M*num_settings];
-fileID = fopen('../raw/simplex_data.txt','r');
+fileID = fopen('../raw/simplex.o31769','r');
 formatSpec = '%f %f %f';
 data = fscanf(fileID,formatSpec,sizedata);
 fclose(fileID);
@@ -24,7 +24,10 @@ for i = 1:num_settings;
 end
 
 % Make of a plot of the performance of the two methods (as # constraints increases)
-plot(num_constr, avg_simp_times, num_constr, avg_dual_simp_times);
+plot(num_constr, avg_simp_times,  'b-o','LineWidth', 2, 'MarkerFaceColor', 'b', 'MarkerSize', 2);
+hold on
+plot(num_constr, avg_dual_simp_times, 'g-o','LineWidth', 2, 'MarkerFaceColor', 'g', 'MarkerSize', 2);
+hold off
 legend('Simplex','Dual Simplex');
 xlabel('Number of Constraints')
 ylabel('Wall Clock Time (sec)')
