@@ -181,7 +181,6 @@ for i = 1:num_settings
     upper_CI_est_viol_prob(i) = t_alpha_over_2*std(est_viol_prob)/sqrt(M);
     
     % Construct CIs (Exact Bernoulli CI from Clopper-Pearson
-    %%% NEED TO FIX THESE!
     lowerbound(i) = 1/(1+(M-x+1)/(x*finv(alpha/2,2*x,2*(M-x+1))));
     upperbound(i) = 1/(1+(M-x)/((x+1)*finv(1-alpha/2,2*(x+1),2*(M-x))));
     lower_CI_viol_prob_gr_eps(i) = min(avg_prob_viol_prob_gr_eps(i) - lowerbound(i), avg_prob_viol_prob_gr_eps(i));
