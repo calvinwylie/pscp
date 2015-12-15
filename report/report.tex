@@ -296,12 +296,28 @@ We use exact binomial tests (Clopper-Pearson) to form approximate confidence int
 
 \section*{Further Experiments}
 
+Our previous experimental results suggested that the parallel \ref{scp} procedure could run in a fraction of the time as the serial procedure, but returned solutions with higher expected violation probabilty and probability of being infeasible for \ref{ccp}.
+This suggested that the time savings could be used to run the parallel procedure on more than $N$ samples.
+In the experiments that followed, we increased the number of samples for each processor, typically by powers of two.
+For example, with $N = 5312$, running the parallel procedure with 8 processors means that each processor receives 664 samples.
+Here we run the same procedure on 8 processors, except with 1328 and 2656 constraints for each processor where now the total number of samples generated was 10624 and 21248.
+
+Figure \ref{fig:wct_numconstraint} shows the wall-clock time results for the instances we tested.
+Observe that the lowest point on each colored curve corresponds to the case of running the original problem of $N = 5312$ constraints.
+From Figure \ref{fig:wct_numconstraint}, we can see the increases in wall-clock time for a fixed number of processors is again superlinear.
+In addition, doubling the number of constraints per processor (for $p =4$, 8, and 16) appears to outperform the serial procedure in terms of wall-clock time and quadrupling the number of constraints per processor (for $p = 4$ and 8) has comparable times to the serial procedure.
+
 \begin{figure}[ht]
 	\centering
 		\includegraphics{../plot/figs/wct_numconstraint.png}
 	\caption{Wall-Clock Times by Number of Constraints/Processor}
 	\label{fig:wct_numconstraint}
 \end{figure}
+
+Figures \ref{fig:expviolprob_numconstraint} and \ref{fig:probviolprobgreateps_numconstraint} show $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$, respectively, for these same instances.
+On these plots, the highest point on each colored curve corresponds to the case of running the original problem.
+As expected, both performance measures improve as the number of constraints per processor are increased.
+It was appears that doubling the number of constraints per processor is enough for the parallel procedure to match or surpass the performance of the serial procedure.
 
 \begin{figure}[ht]
 	\centering
@@ -316,6 +332,11 @@ We use exact binomial tests (Clopper-Pearson) to form approximate confidence int
 	\caption{$\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ by Number of Constraints/Processor}
 	\label{fig:probviolprobgreateps_numconstraint}
 \end{figure}
+
+Finally, the wall-clock time and $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ are shown together in Figure \ref{fig:wct_probviolprobgreateps_frontier_constraint}.
+Each colored line represents a frontier for a fixed number of processors where the left-point on each curve is the original problem.
+The number of constraints per processor increases as one moves to the right along each curve.
+Based on this plot, an ``optimal'' number of configuration appears to be 8 processors with 1328 constraints per processor (the middle red point) because it attains the $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ of the serial solution in less than half the time.
 
 \begin{figure}[ht]
 	\centering
