@@ -1,7 +1,7 @@
 #!/bin/sh -l
 
 #PBS -l nodes=1:ppn=24
-#PBS -N portfolio-16
+#PBS -N portfolio-16-2656
 #PBS -j oe
 
 module load cs5220
@@ -10,5 +10,5 @@ cd $PBS_O_WORKDIR
 
 for (( i = 1 ; i <= 400 ; i++ )); do
   sleep 1
-  mpirun -n 16 bin/portfolio -n 200 -N 332
+  mpirun -n 16 bin/portfolio -n 200 -N 2656
 done 
