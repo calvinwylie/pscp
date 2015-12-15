@@ -7,6 +7,14 @@
 \usepackage{multicol}
 \usepackage{graphicx}
 \usepackage{url}
+\usepackage{fancyhdr}
+
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
 
 \title{Distributed Sampled Convex Problems}
 \author{David Eckman (dje88) and Calvin Wylie (cjw278)}
@@ -27,6 +35,8 @@ However, the required number of samples may still result in a sampled convex pro
 We consider obtaining approximate solutions to these sampled convex programs by distributing the constraints across processors and solving smaller subproblems followed by a consensus on the active constraints.
 We consider a classical portfolio-optimization problem and study the trade-offs that arise from this method: including wall-clock time, violation probability, and feasibility probability.
 \end{abstract}
+
+\blfootnote{Full source code and data for this paper is available at \url{https://github.com/calvinwylie/pscp}.}
 
 \section*{Introduction}
 Chance constrained problems model many real-word applications in areas as diverse as finance, energy, and emergency services \cite{bental09}.
@@ -171,7 +181,8 @@ Therefore we have the following chance constrained program:
 \end{align}
 
 We will assume that the vector of uncertain returns $(r_1, \ldots, r_{n-1})$ is distributed according to a multivariate log-normal distribution with mean vector $\mu$ and covariance matrix $\Sigma$.
-A log-normal is typical for asset payouts because it is unimodal with support on the positive real line.
+A more sophisticated approach might sample the returns from an empirical distribution function built from past data.
+A log-normal is a typical model for asset return because it is unimodal with support on the positive real line.
 Even with knowledge of the probability distribution of the returns, the feasible region is non-convex. (Is it really?)
 
 By taking samples $r^{(j)}$ for $j = 1, \ldots, N$, the corresponding sampled convex program is 
@@ -191,10 +202,10 @@ By taking samples $r^{(j)}$ for $j = 1, \ldots, N$, the corresponding sampled co
 
 \ref{Portfolioscp} has several nice properties:
 \begin{itemize}
-\item The objective function and constraints of \ref{Portfolioscp} are linear. Therefore we can use the simplex method to solve the sampled convex program and subproblems.
+\item The objective function and constraints of \ref{Portfolioscp} are linear. Therefore we can use standard linear programming techniques to solve the sampled convex program and subproblems.
 \item Because of the fixed asset $n$, it is possible to easily find a basic feasible solution by taking $y_n = 1$, $y_i = 0$ for $i = 1, \ldots, n-1$ and $t = r_n$.
 \item The feasible allocations $y$ sit within a unit simplex.
-\item Is $t$ also bounded by the sum of the VaR for each asset?
+\item Is $t$ also bounded by the sum of the VaR for each asset?  $t$ is bounded above by $\max_{i, j} \; r_i^{(j)}$.
 \end{itemize}
 
 Here we take $\epsilon = 0.05$ and $\beta = 1 \times 10^{-5}$ to get a required sample size of $N = 5312$.
@@ -207,7 +218,7 @@ As our contraints are very dense, interior point methods would be likely be very
 To provide paralellism, we coded to the Message Passing Interface (MPI) standard.
 The code was compiled with the Intel C compiler (icc), and experiments performed on a single 12-core Intel Xeon E5-2620 v3 processor.
 
-Given a linear program with $m$ contraints and $n$ variables, the folklore on the simplex method is that it takes $O(m)$ pivots to reach the optimal solution in the average case (the worst case is always $2^n - 1$).
+Given a linear program with $m$ contraints and $n$ variables, the folklore on the simplex method is that it takes $O(m)$ pivots to reach the optimal solution for a ``typical'' linear program (the worst case is always $2^n - 1$).
 Thus we should observe a roughly linear speedup when decomposing our sampled program into smaller subproblems.
 Also given a problem where $m >> n$, it may make sense to solve the dual program instead (which can be done through the so-called Dual Simplex Algorithm), which has only $n$ constraints.
 
@@ -237,7 +248,8 @@ The time required for the final solve on the master processor (using active cons
 However, as we increase the number of processors, the time to communicate the initial constraints (through an MPI\_Scatter) and the active constraints (through MPI\_Gather) will increase.
 Through profiling, we verified that there is a roughly $O(p^2)$ relationship between communication time and the number of processors $p$.
 
-This suggests that we should initially see decreases in wall-clock time as we add processors, but at some point the communication time will start to dominate the savings gained by splitting our problem.  Figure~\ref{fig:wct_numproc} shows this experimentally. 
+This suggests that we should initially see decreases in wall-clock time as we add processors, but at some point the communication time will start to dominate the savings gained by splitting our problem.  
+Figure~\ref{fig:wct_numproc} shows this experimentally.
 
 \begin{figure}[ht]
     \centering
@@ -250,14 +262,16 @@ This suggests that we should initially see decreases in wall-clock time as we ad
 \section*{Experiments}
 Let $\tilde{x} = (\tilde{y}, \tilde{t})$ denote the solution returned by running our parallel \ref{scp} procedure.
 Note that even though we know the distribution $\mathbb{P}$, calculating $V(\tilde{x})$ exactly is intractable.
-Instead we resort to estimating via Monte Carlo simulation: obtaining $R$ i.i.d. realizations of $r$ and calculating
+Instead we resort to estimating via Monte Carlo simulation: sample $R$ i.i.d. realizations of $r$ and calculate
 \[ \hat{V}(\tilde{x}) = \frac{1}{R} \sum_{j = 1}^R \mathbf{1}\left\{ \sum_{i=1}^{n-1} r_i^{(j)} \tilde{y}_i + r_n^{(j)} \tilde{y}_n < \tilde{t}\right\}. \]
 
-We then $M$ macro-replications of the procedure, with corresponding solutions $\tilde{x}^{(k)}$ for $k = 1, \ldots, M$, and calculate the following point estimates of $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$:
+We then perform $M$ macro-replications of this procedure, with corresponding solutions $\tilde{x}^{(k)}$ for $k = 1, \ldots, M$, and calculate the following point estimates of $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$:
 \[ \widehat{\mathbb{E}[V(\tilde{x})]} := \frac{1}{M} \sum_{k=1}^M \hat{V}(\tilde{x}^{(k)}), \]
 and
 \[ \widehat{\mathbb{P}\{V(\tilde{x}) > \epsilon\}} := \frac{1}{M} \sum_{i=1}^M \mathbf{1}\left\{\hat{V}(\tilde{x}) > \epsilon\right\}. \]
 We use exact binomial tests (Clopper-Pearson) to form approximate confidence intervals for these two performance measures.
+
+When we divided the 5312 constraints evenly among $p$ processors, our estimates for $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}\{V(\tilde{x}) > \epsilon\}$ are shown in Figures~\ref{fig:expviolprob_numproc} and \ref{fig:probviolprobgreateps_numproc}.
 
 %\begin{figure}[ht]
 	%\centering
@@ -286,6 +300,8 @@ We use exact binomial tests (Clopper-Pearson) to form approximate confidence int
 	\caption{$\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ by Number of Processors}
 	\label{fig:probviolprobgreateps_numproc}
 \end{figure}
+
+As can be seen in the Figures, even though at 4 processors and above, the violation probability $V(\tilde{x})$ is less than $\epsilon$ in expectation, the probability of \ref{ccp} contraint violation $\mathbb{P}\{V(\tilde{x}) > \epsilon \}$ is still unacceptably high.
 
 \begin{figure}[ht]
 	\centering
