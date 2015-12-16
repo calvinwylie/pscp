@@ -40,7 +40,7 @@ We experiment with a classical portfolio optimization problem and study the trad
 \blfootnote{Full source code and data for this paper is available at \url{https://github.com/calvinwylie/pscp}.}
 
 \section*{Introduction}
-Many real-world applications in areas as diverse as finance, energy, and emergency services can be modeled by chance constrained optimization problems \cite{bental09}.
+Many real-world problems in areas as diverse as finance, energy, and emergency services can be modeled by chance constrained optimization problems \cite{bental09}.
 For example, chance constraints can represent an acceptable level of risk in an investment or a fixed level of service that is guaranteed.
 A typical chance constrained program, \ref{ccp}, is given by
 \begin{align}\label{ccp}
@@ -72,11 +72,11 @@ One method for finding ``good'' solutions which are also feasible for \ref{ccp} 
 Notice that in contrast to \ref{ccp}, \ref{scp} is more tractable since it has a finite number of constraints and a convex feasible region. Note that we also need not explicitly know $\mathbb{P}$, but instead only need to be able to obtain i.i.d. samples from it.
 
 Let $x_N^*$ denote the (random) solution to \ref{scp} obtained by taking $N$ samples.
-for a fixed $x_N^*$, let $V(x_N^*) := \mathbb{P}\{\delta \in \Delta: f(x_N^*, \delta) > 0\}$ be the corresponding violation probability.
+For a fixed $x_N^*$, let $V(x_N^*) := \mathbb{P}\{\delta \in \Delta: f(x_N^*, \delta) > 0\}$ be the corresponding violation probability.
 If $V(x_N^*) \leq \epsilon$, then $x_N^*$ is feasible for \ref{ccp}.
 
 Sampled convex programs do not provide a guarantee that $V(x_N^*) \leq \epsilon$ for a given sample size $N$.
-Instead, Calafiore and Campi \cite{campi05} proved that one can bound the number of samples needed to ensure that $\mathbb{P}^N\{V(x_N^*) > \epsilon\} \leq \beta$,  where $\mathbb{P}^N$ is the product probability measure.
+Instead, Calafiore and Campi \cite{campi05} proved that one can bound the number of samples needed to ensure that $\mathbb{P}^N\{V(x_N^*) > \epsilon\} \leq \beta$ for $0 < \beta \leq 1$,  where $\mathbb{P}^N$ is the product probability measure.
 That is, the optimal solution to \ref{scp} is feasible for \ref{ccp} with probability greater than $1 - \beta$.
 Their bound of $N \geq 1/(\epsilon\beta) - 1$ is simple to calculate, but is quite loose in terms of asymptotics.
 The bound was further tightened in \cite{campi06} to choosing $N$ to satisfy
@@ -98,17 +98,17 @@ Therefore the problem of finding an optimal solution to \ref{scp} can be viewed 
 
 A recent paper by Carlone et al. \cite{carlone2014} studies solving large-scale convex programs in a distributed fashion.
 It assumes a directed graph topology on the communication network connecting a set of processors.
-Initially, each processor is given a subset of the constraints of the master problem with which it solves a convex subproblem.
+Initially, each processor is given a subset of the constraints of the full problem with which it solves a convex subproblem.
 It then identifies the active constraints at that solution and passes them to other processors according to the network topology.
 Each processor receives the incoming constraints and resolves a convex subproblem with their original set of constraints plus the new constraints.
 It was proven that after an almost surely finite number of iterations, all processors will reach a consensus about which constraints are active at the optimal solution to the master problem.
 Note that the objective in \cite{carlone2014} is to recover the exact solution to the convex program, whereas we are interested in finding an approximate solution in far less time.
 
-In practice, this procedure would take far too long to run to completion, especially since there is no bound on the number of iterations needed for consensus.
+In practice, the procedure in \cite{carlone2014} would take far too long to run to completion, especially since there is no bound on the number of iterations needed for consensus.
 %The only instance you would fully run a procedure like this is if the master problem is too large to solve with existing software.
-Instead, we will consider a variation of this procedure which only runs for two iterations and in which the topology of the communication network is a star graph in which all ``worker'' processors pass active constraints to a `master'' processor.
-Because there are only two iterations, the solutions returned will likely not be the exact solution to \ref{scp}.
-However this approximate solution can be calculated in less time, and thus it may be worth a loss in the probability of being a \ref{ccp}-feasible solution.
+Instead, we will consider a variation of this procedure which only runs for two iterations and in which the topology of the communication network is a star graph in which all ``worker'' processors pass active constraints to a ``master'' processor for a second-stage re-solve.
+Because there are only two iterations, the solution returned will likely not be the exact solution to \ref{scp}.
+However this approximate solution can be calculated in less time, and thus it may be worth a loss in the probability of it being a \ref{ccp}-feasible solution.
 
 Suppose that we have available one master processor and $p$ worker processors.
 For simplicity, suppose that $N = mp$ for some positive integer $m > n$.
@@ -146,7 +146,8 @@ Pass the set of active constraints to the master processor.
 Let $\tilde{x}$ denote the corresponding optimal solution.
 \end{enumerate}
 
-Changing the number of processors $p$ will impact the time to solution (wall clock time) of the procedure in two conflicting ways, as the sizes of both the first-stage subproblems and the second stage master problem are changed. With more processors, the subproblems are smaller, but the total number of constraints passed to the master program ($np$) is larger.
+Changing the number of processors $p$ will impact the time to solution (wall clock time) of the procedure in two conflicting ways, as the sizes of both the first-stage subproblems and the second stage master problem are changed.
+With more processors, the subproblems are smaller, but the total number of constraints passed to the master program ($np$) is larger.
 Also, as the number of constraints in the master problem increases, we would expect $\mathbb{P}^N\{V(\tilde{x}) > \epsilon\}$ to decrease.
 The main research question of this study will be: \textit{given these trade-offs, what is the optimal number of processors to use?}
 
@@ -212,11 +213,11 @@ In our experiments, we took $\epsilon = 0.05$ and $\beta = 1 \times 10^{-5}$ and
 
 To solve our example portfolio optimization problem, we implemented a C interface to solve linear programs in parallel using the GNU Linear Programming Kit (GLPK) \footnote{\url{https://www.gnu.org/software/glpk/}}.
 We chose to use the Simplex algorithm to solve our linear programs.  
-As our contraints are very dense, interior point methods would likely be very slow.
-To provide paralellism, we coded to the Message Passing Interface (MPI) standard.
+As our constraints are very dense, interior point methods would likely be very slow.
+To provide parallelism, we coded to the Message Passing Interface (MPI) standard.
 The code was compiled with the Intel C compiler (icc), and experiments performed on a single 12-core Intel Xeon E5-2620 v3 processor.
 
-Given a linear program with $m$ contraints and $n$ variables, the folklore of the simplex method is that it takes $O(m)$ pivots to reach the optimal solution for a ``typical'' linear program (the worst case is always $2^n - 1$).
+Given a linear program with $m$ constraints and $n$ variables, the folklore of the simplex method is that it takes $O(m)$ pivots to reach the optimal solution for a ``typical'' linear program (the worst case is always $2^n - 1$).
 Thus we should observe a roughly linear speedup when decomposing our sampled program into smaller subproblems.
 Also given a problem where $m >> n$, it may make sense to solve the dual program instead (which can be done through the so-called Dual Simplex Algorithm), which has only $n$ constraints.
 
@@ -229,7 +230,7 @@ We guess this is because our sampled constraints are on average very similar to 
 \begin{figure}[ht]
 	\centering
 		\includegraphics[scale=0.9]{../plot/figs/fig_simplex_time.png}
-	\caption{Wall-Clock Times for Simplex and Dual Simplex Methods.}
+	\caption{Wall Clock Times for Simplex and Dual Simplex Methods.}
 	\label{fig:fig_simplex_time}
 \end{figure}
 
@@ -265,7 +266,7 @@ Instead we estimated $V(\tilde{x})$ via Monte Carlo simulation, generating $R = 
 We performed $M = 400$ macro-replications of this procedure, with corresponding solutions $\tilde{x}^{(k)}$ for $k = 1, \ldots, M$, and calculated the following point estimates of $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}^N\{V(\tilde{x}) > \epsilon\}$:
 \[ \widehat{\mathbb{E}[V(\tilde{x})]} := \frac{1}{M} \sum_{k=1}^M \hat{V}(\tilde{x}^{(k)}), \]
 and
-\[ \widehat{\mathbb{P}^N\{V(\tilde{x}) > \epsilon\}} := \frac{1}{M} \sum_{i=1}^M \mathbf{1}\left\{\hat{V}(\tilde{x}) > \epsilon\right\}. \]
+\[ \widehat{\mathbb{P}^N\{V(\tilde{x}) > \epsilon\}} := \frac{1}{M} \sum_{k=1}^M \mathbf{1}\left\{\hat{V}(\tilde{x}^{(k)}) > \epsilon\right\}. \]
 We used the Clopper-Pearson exact binomial test to form approximate confidence intervals for these two performance measures.
 
 When we divided the 5312 constraints evenly among $p$ processors, our estimates for $\mathbb{E}[V(\tilde{x})]$ and $\mathbb{P}^N\{V(\tilde{x}) > \epsilon\}$ are shown in Figures~\ref{fig:expviolprob_numproc} and \ref{fig:probviolprobgreateps_numproc}.
@@ -298,7 +299,7 @@ When we divided the 5312 constraints evenly among $p$ processors, our estimates 
 	\label{fig:probviolprobgreateps_numproc}
 \end{figure}
 
-Though at four processors and above the violation probability $V(\tilde{x})$ is less than $\epsilon$ in expectation, the probability of \ref{ccp} contraint violation $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$ is still very high (recall that we are aiming for $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \} \leq \beta = 10^{-5}$).
+Though at four processors and above the violation probability $V(\tilde{x})$ is less than $\epsilon$ in expectation, the probability of \ref{ccp} constraint violation $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$ is still very high (recall that we are aiming for $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \} \leq \beta = 10^{-5}$).
 
 Figure~\ref{fig:wct_probviolprobgreateps_frontier} shows the trade-off between wall clock time and $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$.  
 This Figure shows that despite returning solutions with high probabilities of infeasibility, the parallel \ref{scp} procedure could run in a fraction of the time of the serial procedure.
@@ -359,9 +360,10 @@ Based on this plot, an ``optimal'' number of configuration appears to be eight p
 \end{figure}
 
 \section*{Conclusions}
-For a modest-sized portfolio optimization problem, we observed that parallelism can dramatically reduce the run time with some loss in \ref{ccp} feasibility.
+We presented a parallel procedure for obtaining approximate solutions to sampled convex programs.
+For a modest-sized portfolio optimization problem, we observed that this parallel procedure can dramatically reduce the run time with some loss in \ref{ccp} feasibility.
+In our MPI implementation we observed marginally decreasing gains in run-time performance as the number of processors increased, due to increased communication and the need to solve a larger second-stage problem.
 We believe that for more complex sampled convex programs---those with more decision variables and constraints or those of harder complexity than linear programs---the benefits of a distributed approach would be even more pronounced.
-In our MPI implementation we observe marginally decreasing gains in run-time performance due to increased communication and the need to solve a larger second-stage problem.
 When we experimented with adjusting the number of constraints per processor, our main conclusion was that one can typically sample twice as much while achieving faster run-times and \ref{ccp}-feasibility competitive with the serial procedure.
 
 
@@ -371,7 +373,7 @@ If we had more time, there are a number of open areas we would have wanted to ex
 \item Experiment on an actual financial data set with forecasts for asset returns.
 \item Compare the quality of the solution returned by our procedure with other solutions found by solving over convex inner approximations of the \ref{ccp} feasible region.
 \item Extend our procedure to run multiple iterations of the worker/master sequence in hopes of better recovering the optimal active constraints.
-\item Test for large problem sizes and other problems whose solution methods are of harder complexity than linear programming.
+\item Test for large problem sizes and other problems whose solution methods are of harder complexity than those of linear programming.
 \end{itemize}
 
 %We intend to conduct experiments on the performance of the parallel procedure versus the traditional serial \ref{scp} procedure.
