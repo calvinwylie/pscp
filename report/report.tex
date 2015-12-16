@@ -34,7 +34,7 @@ By solving a sampled convex program with sufficiently many samples of the uncert
 Sampled convex problems are more easily solved because they are characterized by a finite number of constraints and require only that one can obtain i.i.d. samples of the uncertain parameters.
 However, the required number of samples may still result in a sampled convex program that is expensive to solve exactly.
 We therefore consider a procedure for obtaining approximate solutions to these sampled convex programs by distributing the constraints across processors and solving smaller subproblems, followed by a consensus on the active constraints.
-We experiment with a classical portfolio optimization problem and study the trade-offs that arise from this method: including wall-clock time, expected violation probability, and feasibility probability for the chance constrained program.
+We experiment with a classical portfolio optimization problem and study the trade-offs that arise from this method: including wall clock time, expected violation probability, and feasibility probability for the chance constrained program.
 \end{abstract}
 
 \blfootnote{Full source code and data for this paper is available at \url{https://github.com/calvinwylie/pscp}.}
@@ -42,7 +42,7 @@ We experiment with a classical portfolio optimization problem and study the trad
 \section*{Introduction}
 Many real-world applications in areas as diverse as finance, energy, and emergency services can be modeled by chance constrained optimization problems \cite{bental09}.
 For example, chance constraints can represent an acceptable level of risk in an investment or a fixed level of service that is guaranteed.
-A typical chance-constrained program, \ref{ccp}, is given by
+A typical chance constrained program, \ref{ccp}, is given by
 \begin{align}\label{ccp}
 \begin{split}
 \begin{aligned}
@@ -58,7 +58,7 @@ The parameter $0 \leq \epsilon \leq 1$ represents the acceptable probability wit
 \ref{ccp} is notoriously intractable because the feasible region is non-convex for general probability measures.
 Moreover, obtaining a convex approximation relies on knowing the distribution $\mathbb{P}$ (or at least the moments) a priori.
 
-One method for finding solutions with ``good'' performance which are also feasible for \ref{ccp} with high probability is to take $N$ i.i.d. samples $(\delta_1, \ldots, \delta_N)$ and solve the corresponding sampled convex program, \ref{scp}:
+One method for finding ``good'' solutions which are also feasible for \ref{ccp} with high probability is to take $N$ i.i.d. samples $(\delta_1, \ldots, \delta_N)$ and solve the corresponding sampled convex program, \ref{scp}:
 \begin{align}\label{scp}
 \begin{split}
 \begin{aligned}
@@ -117,7 +117,7 @@ Our proposed procedure is as follows:
 \bigskip
 \textbf{Parallel \ref{scp} Procedure}
 \begin{enumerate}
-\item Aquire $N$ i.i.d. samples $\delta_1, \ldots, \delta_N$.
+\item Acquire $N$ i.i.d. samples $\delta_1, \ldots, \delta_N$.
 
 \item For each worker processor $1 \leq j \leq p$, solve the subproblem
 \begin{equation*}
@@ -130,7 +130,7 @@ Our proposed procedure is as follows:
 \end{equation*}
 Let $\tilde{x}_j$ denote the corresponding optimal solution.
 Determine the set of active constraints at the optimal solution $\tilde{x}_j$.
-Assuming that each sampled convex program is fully-supported with probability one (i.e. that there are $n$ active constraints),
+Assuming that each sampled convex program is fully supported with probability one (i.e. that there are $n$ active constraints),
 label the samples corresponding to these constraints $\delta_{(1)}^j, \ldots, \delta_{(n)}^j$.
 Pass the set of active constraints to the master processor.
 
@@ -146,16 +146,14 @@ Pass the set of active constraints to the master processor.
 Let $\tilde{x}$ denote the corresponding optimal solution.
 \end{enumerate}
 
-Changing the number of processors $p$ affects the sizes of boths the first-stage subproblems and the second stage master problem.
-With more processors, the subproblems are smaller, but the total number of constraints passed to the master program ($np$) is larger.
-This will impact the time to solution (wall-clock time) of the procedure in two conflicting ways.
-And as the number of constraints in the master problem increases, we would expect $\mathbb{P}^N\{V(\tilde{x}) > \epsilon\}$ to decrease.
+Changing the number of processors $p$ will impact the time to solution (wall clock time) of the procedure in two conflicting ways, as the sizes of both the first-stage subproblems and the second stage master problem are changed. With more processors, the subproblems are smaller, but the total number of constraints passed to the master program ($np$) is larger.
+Also, as the number of constraints in the master problem increases, we would expect $\mathbb{P}^N\{V(\tilde{x}) > \epsilon\}$ to decrease.
 The main research question of this study will be: \textit{given these trade-offs, what is the optimal number of processors to use?}
 
 We will also consider another version of this problem.
-Assume that we are willing to commit to the wall-clock time needed to solve \ref{scp} exactly.
+Assume that we are willing to commit to the wall clock time needed to solve \ref{scp} exactly.
 But instead of solving \ref{scp} we want to use the time to take more than $N$ samples and apply the distributed procedure in hopes of increasing the probability that the returned solution is feasible for \ref{ccp}.
-\textit{What then are the best number of processors and number of constraints per processor?}
+\textit{What then is the best number of processors and number of constraints per processor?}
 
 \section*{Example Problem}
 
@@ -181,8 +179,9 @@ This setting gives rise to the following chance constrained program:
 
 We will assume that the vector of uncertain returns $(r_1, \ldots, r_{n-1})$ is distributed according to a multivariate log-normal distribution with mean vector $\mu$ and covariance matrix $\Sigma$.
 A log-normal distribution is a typical model for asset return because it is unimodal with support on the positive real line.
-\textcolor{red}{In our experiment, we take $n=200$ and set the means and variances to be ...}
 A more sophisticated approach might sample the returns from an empirical distribution function built from past data.
+In the experiments we perform, we take $n=200$, with one asset fixed at a return of 1.05.
+The rest of the assets are uncorrelated, with means increasing on the interval [1.06,1.23] and variances increasing on the interval [0.05, 1.045]. 
 
 
 By taking samples $r^{(j)}$ for $j = 1, \ldots, N$, the corresponding sampled convex program is 
@@ -217,12 +216,12 @@ As our contraints are very dense, interior point methods would likely be very sl
 To provide paralellism, we coded to the Message Passing Interface (MPI) standard.
 The code was compiled with the Intel C compiler (icc), and experiments performed on a single 12-core Intel Xeon E5-2620 v3 processor.
 
-Given a linear program with $m$ contraints and $n$ variables, the folklore on the simplex method is that it takes $O(m)$ pivots to reach the optimal solution for a ``typical'' linear program (the worst case is always $2^n - 1$).
+Given a linear program with $m$ contraints and $n$ variables, the folklore of the simplex method is that it takes $O(m)$ pivots to reach the optimal solution for a ``typical'' linear program (the worst case is always $2^n - 1$).
 Thus we should observe a roughly linear speedup when decomposing our sampled program into smaller subproblems.
 Also given a problem where $m >> n$, it may make sense to solve the dual program instead (which can be done through the so-called Dual Simplex Algorithm), which has only $n$ constraints.
 
 Figure \ref{fig:fig_simplex_time} shows some experimental timings for the simplex and dual simplex methods applied to our problem with $n = 200$ assets on a single core.
-It shows the expected linear (in fact superlinear) increase in wall clock time with respect to the number of constraints.
+It shows a superlinear increase in wall clock time with respect to the number of constraints.
 
 However, we do not realize any speedup through solving the dual program.  
 We guess this is because our sampled constraints are on average very similar to each other, and thus not as many pivots are needed to reach an optimal extreme point as would be required in a more ``standard'' linear program.
@@ -236,23 +235,23 @@ We guess this is because our sampled constraints are on average very similar to 
 
 \section*{Performance Analysis}
 
-The program spends time in two main areas: communicating the constraint data through MPI, and solving the linear programs in GLPK.  
+The program spends time in two main areas: communicating the constraint data through MPI and solving the linear programs in GLPK.  
 As these are two mature and heavily optimized libraries, manual performance tuning of the routines called would likely not lead to significant speedups.
 We can however, reason about the overall performance of our program at a high level.
 
-Assuming that the number of constraints is held constant, as Figure~\ref{fig:fig_simplex_time} suggests, we should see a linear decrease in the wall-clock time of the simplex algorithm when distributing the constraints across different processors.  
-The time required for the final solve on the master processor (using active constraints) from the subproblems) should be small, as we can warm-start this optimization with an optimal basis from a subproblem.
+Assuming that the number of constraints is held constant, as Figure~\ref{fig:fig_simplex_time} suggests, we should see a linear decrease in the wall clock time of the simplex algorithm when distributing the constraints across different processors.  
+The time required for the final solve on the master processor (using active constraints from the subproblems) should be small, as we can warm-start this optimization with an optimal basis from a subproblem.
 
 However, as we increase the number of processors, the time to communicate the initial constraints (through an \texttt{MPI\_Scatter}) and the active constraints (through \texttt{MPI\_Gather}) will increase.
 Through profiling, we verified that there is a roughly $O(p^2)$ relationship between communication time and the number of processors $p$.
 
-This suggests that we should initially see decreases in wall-clock time as we add processors, but at some point the communication time will start to dominate the savings gained by splitting our problem.  
+This suggests that we should initially see decreases in wall clock time as we add processors, but at some point the communication time will start to dominate the savings gained by splitting our problem.  
 Figure~\ref{fig:wct_numproc} shows this experimentally.
 
 \begin{figure}[ht]
     \centering
         \includegraphics[scale=0.9]{../plot/figs/wct_numproc.png}
-    \caption{Wall-Clock Times by Number of Processors.}
+    \caption{Wall Clock Times by Number of Processors.}
     \label{fig:wct_numproc}
 \end{figure}
 
@@ -299,9 +298,9 @@ When we divided the 5312 constraints evenly among $p$ processors, our estimates 
 	\label{fig:probviolprobgreateps_numproc}
 \end{figure}
 
-As can be seen in the Figures, even though at 4 processors and above, the violation probability $V(\tilde{x})$ is less than $\epsilon$ in expectation, the probability of \ref{ccp} contraint violation $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$ is still very high (recall that we are aiming for $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \} \leq \beta = 10^{-5}$).
+Though at four processors and above the violation probability $V(\tilde{x})$ is less than $\epsilon$ in expectation, the probability of \ref{ccp} contraint violation $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$ is still very high (recall that we are aiming for $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \} \leq \beta = 10^{-5}$).
 
-Figure~\ref{fig:wct_probviolprobgreateps_frontier} shows the trade-off between wall-clock time and $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$.  
+Figure~\ref{fig:wct_probviolprobgreateps_frontier} shows the trade-off between wall clock time and $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$.  
 This Figure shows that despite returning solutions with high probabilities of infeasibility, the parallel \ref{scp} procedure could run in a fraction of the time of the serial procedure.
 This suggests that we could use some of the time savings to run the parallel procedure on more than $N$ samples, recovering solutions with feasibility probabilities competitive with the serial procedure, with still significant speedup.
 
@@ -312,19 +311,19 @@ This suggests that we could use some of the time savings to run the parallel pro
 	\label{fig:wct_probviolprobgreateps_frontier}
 \end{figure}
 
-In another set of experiments, we increased the number of samples given to each worker processor, typically doubling or quadrupaling.
-For example, with $N = 5312$, running the parallel procedure with 8 processors means that each processor receives $N/8 = 664$ samples.
-Here we ran the same procedure on 8 processors, except with 1328 and 2656 constraints for each processor (so now the total number of samples generated was 10624 and 21248).
+In another set of experiments, we increased the number of samples given to each worker processor, typically doubling or quadrupling.
+For example, with $N = 5312$, running the parallel procedure with eight processors means that each processor receives $N/8 = 664$ samples.
+Here we ran the same procedure on eight processors, except with 1328 and 2656 constraints for each processor (so now the total number of samples generated was 10624 and 21248).
 
-Figure \ref{fig:wct_numconstraint} shows the wall-clock time results for the instances we tested.
+Figure \ref{fig:wct_numconstraint} shows the wall clock time results for the instances we tested.
 Observe that the lowest point on each colored curve corresponds to the case of running the original problem of $N = 5312$ constraints.
-From Figure \ref{fig:wct_numconstraint}, we can see the increases in wall-clock time for a fixed number of processors is again superlinear.
-In addition, doubling the number of constraints per processor (for $p =4$, 8, and 16) appears to outperform the serial procedure in terms of wall-clock time and quadrupling the number of constraints per processor (for $p = 4$ and 8) has comparable times to the serial procedure.
+From Figure \ref{fig:wct_numconstraint}, we can see the increases in wall clock time for a fixed number of processors is again superlinear.
+In addition, doubling the number of constraints per processor (for $p =4$, 8, and 16) appears to outperform the serial procedure in terms of wall clock time and quadrupling the number of constraints per processor (for $p = 4$ and 8) has comparable times to the serial procedure.
 
 \begin{figure}[ht]
 	\centering
 		\includegraphics[scale=0.9]{../plot/figs/wct_numconstraint.png}
-	\caption{Wall-Clock Times by Number of Constraints/Processor.}
+	\caption{Wall Clock Times by Number of Constraints/Processor.}
 	\label{fig:wct_numconstraint}
 \end{figure}
 
@@ -347,10 +346,10 @@ It appears that doubling the number of constraints per processor is enough for t
 	\label{fig:probviolprobgreateps_numconstraint}
 \end{figure}
 
-Finally, the wall-clock time and $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$ are shown together in Figure \ref{fig:wct_probviolprobgreateps_frontier_constraint}.
+Finally, the wall clock time and $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$ are shown together in Figure \ref{fig:wct_probviolprobgreateps_frontier_constraint}.
 Each colored line represents a frontier for a fixed number of processors where the left-point on each curve is the original problem.
 The number of constraints per processor increases as one moves to the right along each curve.
-Based on this plot, an ``optimal'' number of configuration appears to be 8 processors with 1328 constraints per processor (the middle red point) because it attains the $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$ of the serial solution in less than half the time.
+Based on this plot, an ``optimal'' number of configuration appears to be eight processors with 1328 constraints per processor (the middle red point) because it attains the $\mathbb{P}^N\{V(\tilde{x}) > \epsilon \}$ of the serial solution in less than half the time.
 
 \begin{figure}[ht]
 	\centering
@@ -377,7 +376,7 @@ If we had more time, there are a number of open areas we would have wanted to ex
 
 %We intend to conduct experiments on the performance of the parallel procedure versus the traditional serial \ref{scp} procedure.
 %For measures of performance of the solutions $x^*$ and $x^{**}$, we will look at the objective function values, the expected violation probabilities, and the probabilities that the violations probabilities are greater than $\epsilon$.
-%We will make comparisons based on both the total number of samples and the total wall-clock times of the two procedures.
+%We will make comparisons based on both the total number of samples and the total wall clock times of the two procedures.
 %
 %We will also experiment with variations of the basic procedure.
 %One variation would involve communicating the support constraints of the master's problem back to the slaves and doing new sampling before solving new subproblems for each slaves.
